@@ -73,7 +73,20 @@
         if (typeof editor.onDidChangeModel === 'function') {
             editor.onDidChangeModel(update);
         }
+        if (typeof editor.onDidFocusEditorText === 'function') {
+            editor.onDidFocusEditorText(update);
+        }
+        if (typeof editor.onDidBlurEditorText === 'function') {
+            editor.onDidBlurEditorText(update);
+        }
+        if (typeof editor.onDidLayoutChange === 'function') {
+            editor.onDidLayoutChange(update);
+        }
         update();
+        setTimeout(update, 50);
+        setTimeout(update, 150);
+        setTimeout(update, 350);
+        setTimeout(update, 800);
     }
 
     let _editor = window.__chatInputEditor;
@@ -109,6 +122,21 @@
         markdownEl.__historyDecorated = true;
 
         if (typeof document === 'undefined') return;
+
+        // Unwrap các thẻ <code> (không nằm trong <pre>) thành text node với format ` + code.textContent + `
+        const codeElements = Array.from(markdownEl.querySelectorAll('code')).filter(
+            (codeEl) => !codeEl.closest('pre')
+        );
+        for (const codeEl of codeElements) {
+            const rawText = '`' + (codeEl.textContent || '') + '`';
+            const textNode = document.createTextNode(rawText);
+            if (codeEl.parentNode) {
+                codeEl.parentNode.replaceChild(textNode, codeEl);
+            }
+        }
+        if (typeof markdownEl.normalize === 'function') {
+            markdownEl.normalize();
+        }
 
         const walker = document.createTreeWalker(
             markdownEl,
@@ -184,7 +212,7 @@
         if (typeof document === 'undefined') return;
         try {
             const targets = document.querySelectorAll(
-                '.interactive-request .rendered-markdown, .chat-item.request .rendered-markdown, [class*="interactive"] .rendered-markdown'
+                '.interactive-request .rendered-markdown, .chat-item.request .rendered-markdown, [class*="interactive"] .rendered-markdown, .monaco-list-row.request .rendered-markdown, [data-index].request .rendered-markdown, .chat-row.request .rendered-markdown, .chat-request .rendered-markdown, div[class*="request"] .rendered-markdown'
             );
             targets.forEach((el) => decorateHistoryBubble(el));
         } catch (err) {
@@ -251,6 +279,21 @@
                     console.error('[JARVIS] Error hooking onCodeEditorAdd:', e);
                 }
             }
+
+            setInterval(() => {
+                try {
+                    if (typeof svc.listCodeEditors === 'function') {
+                        const editors = svc.listCodeEditors();
+                        if (editors && typeof editors[Symbol.iterator] === 'function') {
+                            for (const ed of editors) {
+                                attachChatPillDecorations(ed);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('[JARVIS] Error polling code editors:', e);
+                }
+            }, 300);
         }
 
         let _svc = window.__codeEditorService;

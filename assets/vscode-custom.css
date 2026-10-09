@@ -151,7 +151,14 @@
 
 /* Triệt tiêu style code pill trong user request & queued box */
 .interactive-session .request .rendered-markdown code,
+.interactive-request .rendered-markdown code,
 .chat-item.request .rendered-markdown code,
+.monaco-list-row.request .rendered-markdown code,
+[data-index].request .rendered-markdown code,
+.chat-row.request .rendered-markdown code,
+.chat-request .rendered-markdown code,
+div[class*="request"] .rendered-markdown code,
+[class*="interactive"] .rendered-markdown code,
 [class*="queued"] .rendered-markdown code {
     background: transparent !important;
     border: none !important;
@@ -163,22 +170,43 @@
 
 /* Phục hồi hiển thị cặp dấu backtick mở/đóng bị markdown nuốt */
 .interactive-session .request .rendered-markdown code::before,
+.interactive-request .rendered-markdown code::before,
 .chat-item.request .rendered-markdown code::before,
+.monaco-list-row.request .rendered-markdown code::before,
+[data-index].request .rendered-markdown code::before,
+.chat-row.request .rendered-markdown code::before,
+.chat-request .rendered-markdown code::before,
+div[class*="request"] .rendered-markdown code::before,
+[class*="interactive"] .rendered-markdown code::before,
 [class*="queued"] .rendered-markdown code::before {
     content: "`" !important;
 }
 
 .interactive-session .request .rendered-markdown code::after,
+.interactive-request .rendered-markdown code::after,
 .chat-item.request .rendered-markdown code::after,
+.monaco-list-row.request .rendered-markdown code::after,
+[data-index].request .rendered-markdown code::after,
+.chat-row.request .rendered-markdown code::after,
+.chat-request .rendered-markdown code::after,
+div[class*="request"] .rendered-markdown code::after,
+[class*="interactive"] .rendered-markdown code::after,
 [class*="queued"] .rendered-markdown code::after {
     content: "`" !important;
 }
 
 /* Slash command pill (Chat Input + Chat History) */
 .monaco-editor .custom-wf-pill,
+.interactive-session .request .rendered-markdown .custom-wf-pill,
 .interactive-request .rendered-markdown .custom-wf-pill,
 .chat-item.request .rendered-markdown .custom-wf-pill,
-[class*="interactive"] .rendered-markdown .custom-wf-pill {
+.monaco-list-row.request .rendered-markdown .custom-wf-pill,
+[data-index].request .rendered-markdown .custom-wf-pill,
+.chat-row.request .rendered-markdown .custom-wf-pill,
+.chat-request .rendered-markdown .custom-wf-pill,
+div[class*="request"] .rendered-markdown .custom-wf-pill,
+[class*="interactive"] .rendered-markdown .custom-wf-pill,
+[class*="queued"] .rendered-markdown .custom-wf-pill {
     background-color: var(--vscode-chat-slashCommandBackground, rgba(38, 71, 120, 0.4)) !important;
     color: var(--vscode-chat-slashCommandForeground, #89b4fa) !important;
     border-radius: 3px !important;
@@ -189,9 +217,16 @@
 
 /* Backtick command pill (Chat Input + Chat History) */
 .monaco-editor .custom-backtick-pill,
+.interactive-session .request .rendered-markdown .custom-backtick-pill,
 .interactive-request .rendered-markdown .custom-backtick-pill,
 .chat-item.request .rendered-markdown .custom-backtick-pill,
-[class*="interactive"] .rendered-markdown .custom-backtick-pill {
+.monaco-list-row.request .rendered-markdown .custom-backtick-pill,
+[data-index].request .rendered-markdown .custom-backtick-pill,
+.chat-row.request .rendered-markdown .custom-backtick-pill,
+.chat-request .rendered-markdown .custom-backtick-pill,
+div[class*="request"] .rendered-markdown .custom-backtick-pill,
+[class*="interactive"] .rendered-markdown .custom-backtick-pill,
+[class*="queued"] .rendered-markdown .custom-backtick-pill {
     background-color: rgba(168, 85, 247, 0.22) !important;
     color: #d8b4fe !important;
     border: 1px solid rgba(192, 132, 252, 0.45) !important;
@@ -200,6 +235,12 @@
     box-sizing: border-box !important;
     box-shadow: 0 0 6px rgba(168, 85, 247, 0.25) !important;
     display: inline !important;
+}
+
+/* Triệt tiêu pseudo content cho backtick pill */
+.custom-backtick-pill::before,
+.custom-backtick-pill::after {
+    content: none !important;
 }
 
 /* Bắt buộc hiển thị background cho tất cả chat-session decorations */
