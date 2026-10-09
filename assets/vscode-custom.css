@@ -175,13 +175,23 @@
 }
 
 /* Bôi xanh pill bo góc cho slash command sau dấu '>' */
-.monaco-editor .custom-wf-pill,
-.monaco-editor .custom-wf-pill-bg {
+.monaco-editor .custom-wf-pill {
     background-color: var(--vscode-chat-slashCommandBackground, rgba(38, 71, 120, 0.4)) !important;
     color: var(--vscode-chat-slashCommandForeground, #89b4fa) !important;
     border-radius: 3px !important;
     padding: 0 2px !important;
     box-sizing: border-box !important;
+}
+
+/* Backtick Macro Custom Pill Decoration (Purple) */
+.monaco-editor .custom-backtick-pill {
+    background-color: rgba(168, 85, 247, 0.22) !important;
+    color: #d8b4fe !important;
+    border: 1px solid rgba(192, 132, 252, 0.45) !important;
+    border-radius: 3px !important;
+    padding: 0 3px !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 0 6px rgba(168, 85, 247, 0.25) !important;
 }
 
 /* Bắt buộc hiển thị background cho tất cả chat-session decorations */

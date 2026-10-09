@@ -36,11 +36,31 @@
                         },
                         options: {
                             description: 'custom-slash-command-pill',
-                            inlineClassName: 'custom-wf-pill',
-                            className: 'custom-wf-pill-bg'
+                            inlineClassName: 'custom-wf-pill'
                         }
                     });
                 }
+
+                const reBacktick = /(?:^|[\s>:,;])(`[\p{L}0-9_.:-]+)(?!`)/gu;
+                let mb;
+                while ((mb = reBacktick.exec(text)) !== null) {
+                    const subStart = mb.index + mb[0].lastIndexOf(mb[1]);
+                    const p1 = model.getPositionAt(subStart);
+                    const p2 = model.getPositionAt(subStart + mb[1].length);
+                    newDecos.push({
+                        range: {
+                            startLineNumber: p1.lineNumber,
+                            startColumn: p1.column,
+                            endLineNumber: p2.lineNumber,
+                            endColumn: p2.column
+                        },
+                        options: {
+                            description: 'custom-backtick-command-pill',
+                            inlineClassName: 'custom-backtick-pill'
+                        }
+                    });
+                }
+
                 decos.set(newDecos);
             } catch (err) {
                 console.error('[JARVIS] Error updating slash decorations:', err);

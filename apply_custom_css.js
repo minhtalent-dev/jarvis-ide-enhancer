@@ -41,7 +41,17 @@ let html = fs.readFileSync(htmlPath, 'utf8');
 const alreadyInjected = html.includes('VSCODE-CUSTOM-CSS-START');
 
 if (alreadyInjected) {
-    console.log('workbench.html đã được inject Custom CSS trước đó.');
+    console.log('workbench.html đã được inject Custom CSS trước đó. Đang cập nhật CSS & JS mới nhất...');
+    const cssContent = fs.readFileSync(destCss, 'utf8');
+    const jsContent = fs.readFileSync(destJs, 'utf8');
+    const customBlockRegex = /<!-- !! VSCODE-CUSTOM-CSS-START !! -->[\s\S]*?<!-- !! VSCODE-CUSTOM-CSS-END !! -->/;
+    const newCustomBlock = `<!-- !! VSCODE-CUSTOM-CSS-START !! -->\n` +
+        `<style>\n${cssContent}\n</style>\n` +
+        `<script>\n${jsContent}\n</script>\n` +
+        `<!-- !! VSCODE-CUSTOM-CSS-END !! -->`;
+    html = html.replace(customBlockRegex, newCustomBlock);
+    fs.writeFileSync(htmlPath, html, 'utf8');
+    console.log(`Đã cập nhật Custom CSS & JS vào: ${htmlPath}`);
 } else {
     const uuidSession = crypto.randomUUID();
     const htmlDir = path.dirname(htmlPath);
