@@ -158,7 +158,6 @@
 .chat-row.request .rendered-markdown code,
 .chat-request .rendered-markdown code,
 div[class*="request"] .rendered-markdown code,
-[class*="interactive"] .rendered-markdown code,
 [class*="queued"] .rendered-markdown code {
     background: transparent !important;
     border: none !important;
@@ -177,7 +176,6 @@ div[class*="request"] .rendered-markdown code,
 .chat-row.request .rendered-markdown code::before,
 .chat-request .rendered-markdown code::before,
 div[class*="request"] .rendered-markdown code::before,
-[class*="interactive"] .rendered-markdown code::before,
 [class*="queued"] .rendered-markdown code::before {
     content: "`" !important;
 }
@@ -190,7 +188,6 @@ div[class*="request"] .rendered-markdown code::before,
 .chat-row.request .rendered-markdown code::after,
 .chat-request .rendered-markdown code::after,
 div[class*="request"] .rendered-markdown code::after,
-[class*="interactive"] .rendered-markdown code::after,
 [class*="queued"] .rendered-markdown code::after {
     content: "`" !important;
 }
@@ -205,7 +202,6 @@ div[class*="request"] .rendered-markdown code::after,
 .chat-row.request .rendered-markdown .custom-wf-pill,
 .chat-request .rendered-markdown .custom-wf-pill,
 div[class*="request"] .rendered-markdown .custom-wf-pill,
-[class*="interactive"] .rendered-markdown .custom-wf-pill,
 [class*="queued"] .rendered-markdown .custom-wf-pill {
     background-color: var(--vscode-chat-slashCommandBackground, rgba(38, 71, 120, 0.4)) !important;
     color: var(--vscode-chat-slashCommandForeground, #89b4fa) !important;
@@ -225,7 +221,6 @@ div[class*="request"] .rendered-markdown .custom-wf-pill,
 .chat-row.request .rendered-markdown .custom-backtick-pill,
 .chat-request .rendered-markdown .custom-backtick-pill,
 div[class*="request"] .rendered-markdown .custom-backtick-pill,
-[class*="interactive"] .rendered-markdown .custom-backtick-pill,
 [class*="queued"] .rendered-markdown .custom-backtick-pill {
     background-color: rgba(168, 85, 247, 0.22) !important;
     color: #d8b4fe !important;

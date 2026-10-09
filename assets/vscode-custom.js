@@ -5,6 +5,48 @@
 (function () {
     'use strict';
 
+    /**
+     * Quét và trích xuất danh sách token backtick macro, loại trừ các khối inline code Markdown
+     */
+    function findBacktickMacroTokens(text) {
+        if (!text || typeof text !== 'string') return [];
+
+        const inlineCodeRanges = [];
+        const inlineCodeRe = /(?:^|[^\\])`([^`\r\n]+)`(?=[\s.,;:!?)\]\r\n]|$)/gu;
+        let m;
+        while ((m = inlineCodeRe.exec(text)) !== null) {
+            const fullMatch = m[0];
+            const prefixLen = fullMatch.length - m[1].length - 2;
+            const codeStart = m.index + prefixLen;
+            const codeEnd = codeStart + m[1].length + 2;
+            inlineCodeRanges.push([codeStart, codeEnd]);
+        }
+
+        const tokens = [];
+        const macroRe = /(?:^|[\s>:,;])(`[\p{L}0-9_.:-]+)(?=[\s>:,;.?!)\]]|$)/gu;
+        let mb;
+        while ((mb = macroRe.exec(text)) !== null) {
+            const fullMatch = mb[0];
+            const rawToken = mb[1];
+            const tokenStart = mb.index + fullMatch.lastIndexOf(rawToken);
+            const tokenEnd = tokenStart + rawToken.length;
+
+            const insideInline = inlineCodeRanges.some(([start, end]) => tokenStart < end && tokenEnd > start);
+
+            if (!insideInline) {
+                tokens.push({
+                    token: rawToken,
+                    start: tokenStart,
+                    end: tokenEnd,
+                    index: tokenStart,
+                    length: rawToken.length
+                });
+            }
+        }
+
+        return tokens;
+    }
+
     function attachChatPillDecorations(editor) {
         if (!editor || typeof editor.createDecorationsCollection !== 'function') return;
         if (editor.__slashPillAttached) return;
@@ -41,12 +83,10 @@
                     });
                 }
 
-                const reBacktick = /(?:^|[\s>:,;])(`[\p{L}0-9_.:-]+)(?!`)/gu;
-                let mb;
-                while ((mb = reBacktick.exec(text)) !== null) {
-                    const subStart = mb.index + mb[0].lastIndexOf(mb[1]);
-                    const p1 = model.getPositionAt(subStart);
-                    const p2 = model.getPositionAt(subStart + mb[1].length);
+                const backtickTokens = findBacktickMacroTokens(text);
+                for (const item of backtickTokens) {
+                    const p1 = model.getPositionAt(item.start);
+                    const p2 = model.getPositionAt(item.end);
                     newDecos.push({
                         range: {
                             startLineNumber: p1.lineNumber,
@@ -119,19 +159,29 @@
      */
     function decorateHistoryBubble(markdownEl) {
         if (!markdownEl || markdownEl.__historyDecorated) return;
-        markdownEl.__historyDecorated = true;
-
         if (typeof document === 'undefined') return;
 
-        // Unwrap các thẻ <code> (không nằm trong <pre>) thành text node với format ` + code.textContent + `
+        if (markdownEl.closest('.interactive-response, .chat-response, [class*="response"]')) {
+            return;
+        }
+        if (!markdownEl.closest('.interactive-request, .chat-item.request, [class*="request"]')) {
+            return;
+        }
+
+        markdownEl.__historyDecorated = true;
+
+        // Unwrap các thẻ <code> (không nằm trong <pre>) thành text node nếu chứa backtick macro token
         const codeElements = Array.from(markdownEl.querySelectorAll('code')).filter(
             (codeEl) => !codeEl.closest('pre')
         );
         for (const codeEl of codeElements) {
-            const rawText = '`' + (codeEl.textContent || '') + '`';
-            const textNode = document.createTextNode(rawText);
-            if (codeEl.parentNode) {
-                codeEl.parentNode.replaceChild(textNode, codeEl);
+            const rawContent = codeEl.textContent || '';
+            if (findBacktickMacroTokens('`' + rawContent + '`').length > 0) {
+                const rawText = '`' + rawContent + '`';
+                const textNode = document.createTextNode(rawText);
+                if (codeEl.parentNode) {
+                    codeEl.parentNode.replaceChild(textNode, codeEl);
+                }
             }
         }
         if (typeof markdownEl.normalize === 'function') {
@@ -162,39 +212,59 @@
             nodesToReplace.push(currentNode);
         }
 
-        const tokenRe = /(?:^|[\s>:,;])((?:\/[\p{L}0-9_.:-]+)|(?:`[\p{L}0-9_.:-]+(?!`)))/gu;
+        const slashRe = /(?:^|[\s>:,;])(\/[\p{L}0-9_.:-]+)/gu;
 
         for (const textNode of nodesToReplace) {
             const text = textNode.nodeValue;
-            tokenRe.lastIndex = 0;
-            let match;
-            let lastIndex = 0;
-            let hasMatches = false;
-            const frag = document.createDocumentFragment();
+            const allTokens = [];
 
-            while ((match = tokenRe.exec(text)) !== null) {
-                hasMatches = true;
-                const fullMatch = match[0];
-                const token = match[1];
-                const tokenStart = match.index + fullMatch.lastIndexOf(token);
-
-                if (tokenStart > lastIndex) {
-                    frag.appendChild(document.createTextNode(text.slice(lastIndex, tokenStart)));
-                }
-
-                const span = document.createElement('span');
-                if (token.startsWith('/')) {
-                    span.className = 'custom-wf-pill';
-                } else {
-                    span.className = 'custom-backtick-pill';
-                }
-                span.textContent = token;
-                frag.appendChild(span);
-
-                lastIndex = tokenStart + token.length;
+            slashRe.lastIndex = 0;
+            let sm;
+            while ((sm = slashRe.exec(text)) !== null) {
+                const rawToken = sm[1];
+                const tokenStart = sm.index + sm[0].lastIndexOf(rawToken);
+                allTokens.push({
+                    token: rawToken,
+                    start: tokenStart,
+                    end: tokenStart + rawToken.length,
+                    type: 'slash'
+                });
             }
 
-            if (hasMatches) {
+            const backtickTokens = findBacktickMacroTokens(text);
+            for (const bt of backtickTokens) {
+                allTokens.push({
+                    token: bt.token,
+                    start: bt.start,
+                    end: bt.end,
+                    type: 'backtick'
+                });
+            }
+
+            allTokens.sort((a, b) => a.start - b.start);
+
+            const nonOverlapping = [];
+            let cursor = 0;
+            for (const tok of allTokens) {
+                if (tok.start >= cursor) {
+                    nonOverlapping.push(tok);
+                    cursor = tok.end;
+                }
+            }
+
+            if (nonOverlapping.length > 0) {
+                const frag = document.createDocumentFragment();
+                let lastIndex = 0;
+                for (const tok of nonOverlapping) {
+                    if (tok.start > lastIndex) {
+                        frag.appendChild(document.createTextNode(text.slice(lastIndex, tok.start)));
+                    }
+                    const span = document.createElement('span');
+                    span.className = tok.type === 'slash' ? 'custom-wf-pill' : 'custom-backtick-pill';
+                    span.textContent = tok.token;
+                    frag.appendChild(span);
+                    lastIndex = tok.end;
+                }
                 if (lastIndex < text.length) {
                     frag.appendChild(document.createTextNode(text.slice(lastIndex)));
                 }
@@ -212,7 +282,7 @@
         if (typeof document === 'undefined') return;
         try {
             const targets = document.querySelectorAll(
-                '.interactive-request .rendered-markdown, .chat-item.request .rendered-markdown, [class*="interactive"] .rendered-markdown, .monaco-list-row.request .rendered-markdown, [data-index].request .rendered-markdown, .chat-row.request .rendered-markdown, .chat-request .rendered-markdown, div[class*="request"] .rendered-markdown'
+                '.interactive-request .rendered-markdown, .chat-item.request .rendered-markdown, .monaco-list-row.request .rendered-markdown, [data-index].request .rendered-markdown, .chat-row.request .rendered-markdown, .chat-request .rendered-markdown, div[class*="request"] .rendered-markdown'
             );
             targets.forEach((el) => decorateHistoryBubble(el));
         } catch (err) {
