@@ -4,3 +4,7 @@ planning/**
 *.vsix
 node_modules/**
 **/*.map
+apply_*.js
+docs/**
+!docs/images/**
+

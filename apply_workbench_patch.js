@@ -36,21 +36,27 @@ if (p1.test(content)) {
     console.warn('Patch 1: Cảnh báo không tìm thấy mẫu hàm target!');
 }
 
-// 2. Áp dụng Patch 2: Hook window.__chatInputEditor & dispatch chat-editor-ready event
-const isHookPatched = content.includes('window.__chatInputEditor=e.inputEditor') || content.includes('window.__chatInputEditor=');
-if (!isHookPatched) {
+// 2. Áp dụng Patch 2: Hook window.__chatInputEditor, window.__codeEditorService & dispatch chat-editor-ready event
+if (content.includes('this.widget=e;try{window.__chatInputEditor=e.inputEditor;') && !content.includes('window.__codeEditorService=t;')) {
+    console.log('Patch 2: Phát hiện hook chatInputEditor, đang bổ sung window.__codeEditorService=t;');
+    content = content.replace(
+        'this.widget=e;try{window.__chatInputEditor=e.inputEditor;',
+        'this.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;'
+    );
+    patch2Applied = true;
+} else if (content.includes('window.__codeEditorService=t')) {
+    console.log('Patch 2: Đã được áp dụng trước đó (window.__codeEditorService=t).');
+    patch2Applied = true;
+} else {
     const hookTarget = 'this.widget=e;this.codeEditorService=t;';
-    const hookReplacement = 'this.widget=e;try{window.__chatInputEditor=e.inputEditor;window.dispatchEvent(new CustomEvent(\'chat-editor-ready\',{detail:e.inputEditor}))}catch(err){}this.codeEditorService=t;';
+    const hookReplacement = 'this.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;window.dispatchEvent(new CustomEvent(\'chat-editor-ready\',{detail:e.inputEditor}))}catch(err){}this.codeEditorService=t;';
     if (content.includes(hookTarget)) {
-        console.log('Patch 2: Phát hiện hook target, đang gán window.__chatInputEditor và dispatch chat-editor-ready');
+        console.log('Patch 2: Phát hiện hook target, đang gán window.__chatInputEditor, window.__codeEditorService và dispatch chat-editor-ready');
         content = content.replaceAll(hookTarget, hookReplacement);
         patch2Applied = true;
     } else {
         console.warn('Patch 2: Cảnh báo không tìm thấy hook target!');
     }
-} else {
-    console.log('Patch 2: Đã được áp dụng trước đó.');
-    patch2Applied = true;
 }
 
 // 3. Kiểm tra cú pháp bằng new vm.Script
@@ -74,11 +80,11 @@ console.log(`Đã ghi file: ${jsPath}`);
 // 5. Xác minh file chứa cả 2 patch
 const verified = fs.readFileSync(jsPath, 'utf8');
 const vPatch1 = verified.includes('function Pge(s,o){return!0}') || verified.includes('function Tme(s,o){return!0}');
-const vPatch2 = verified.includes('window.__chatInputEditor=e.inputEditor');
+const vPatch2 = verified.includes('window.__chatInputEditor=e.inputEditor') && verified.includes('window.__codeEditorService=t');
 
 console.log('=== KẾT QUẢ XÁC MINH ===');
 console.log('Patch 1 (Intellisense return!0):', vPatch1 ? 'THÀNH CÔNG' : 'THẤT BÀI');
-console.log('Patch 2 (Hook window.__chatInputEditor):', vPatch2 ? 'THÀNH CÔNG' : 'THẤT BÀI');
+console.log('Patch 2 (Hook chatInputEditor & codeEditorService):', vPatch2 ? 'THÀNH CÔNG' : 'THẤT BÀI');
 
 if (!vPatch1 || !vPatch2) {
     process.exit(1);
