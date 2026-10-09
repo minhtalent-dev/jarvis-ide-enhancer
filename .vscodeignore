@@ -1,0 +1,6 @@
+.vscode/**
+.gitignore
+planning/**
+*.vsix
+node_modules/**
+**/*.map
