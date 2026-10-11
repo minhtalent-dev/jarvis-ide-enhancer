@@ -4,7 +4,7 @@
 
 **Bespoke Luxury Visuals & Intelligent Prompt Engineering for VS Code**
 
-[![Version](https://img.shields.io/badge/version-v1.1.10-89b4fa.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.1.12-89b4fa.svg)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-89dceb.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/vscode-%5E1.85.0-74c7ec.svg)](https://code.visualstudio.com/)
 [![Architecture](https://img.shields.io/badge/architecture-Zero--Crash-a6e3a1.svg)](#-zero-crash-architecture)
@@ -53,7 +53,15 @@ Craft an elite, high-performance workspace for Founders & Developers: 3D Isometr
 
 ---
 
-### 4. Full Lifecycle Consistency (Chat Input, History & Inline Edit)
+### 4. Interactive Backtick Macro Autocomplete Popup
+
+- **Floating Suggestion Widget:** As soon as you type a backtick (`` ` ``) followed by prefix characters (e.g., `` `fp ``, `` `tt ``, `` `rcm ``) in the Chat Input editor, an interactive suggestion popup appears directly above the cursor.
+- **Keyboard Navigation & Instant Insertion:** Seamlessly navigate suggestions via `ArrowUp` and `ArrowDown`, accept with `Enter` or `Tab`, and dismiss with `Escape`. Selected macros insert atomic tokens instantly with exact trailing space.
+- **Rich Macro Metadata:** Displays macro key, human-readable labels, and full descriptions for all 20+ founder macro commands.
+
+---
+
+### 5. Full Lifecycle Consistency (Chat Input, History & Inline Edit)
 
 - **Uniform Lifecycle Styling:** Blue pill styling for Slash Commands and purple pills for Backtick Macros persist across the Monaco Input Editor, queued requests, chat history bubbles, and inline edit sessions.
 - **Markdown Backtick Restorer:** Eliminates common Markdown parser issues that strip leading backticks, faithfully rendering exact prompt tokens in conversation bubbles.
@@ -63,7 +71,7 @@ Craft an elite, high-performance workspace for Founders & Developers: 3D Isometr
 
 ---
 
-### 5. Centered Chat Tables & Streamlined Markdown
+### 6. Centered Chat Tables & Streamlined Markdown
 
 - **Centered Data Tables:** Automatically aligns Markdown tables within Copilot Chat responses (`margin: 0 auto; display: table`), transforming technical reports and data matrices into clean dashboards.
 - **Decluttered Prompt Formatting:** Strips redundant gray code borders in user prompt bubbles for a modern, sleek appearance.
@@ -71,13 +79,29 @@ Craft an elite, high-performance workspace for Founders & Developers: 3D Isometr
 
 ---
 
-### 6. Cloud Settings Sync (Multi-Device)
+### 7. Cloud Settings Sync (Multi-Device)
 
 - **Cloud-Backed Personalization:** Extend and customize CSS and JS directly through configuration keys:
   - `jarvisEnhancer.customCSS`: Append or override bespoke CSS rules.
   - `jarvisEnhancer.customJS`: Append or override custom UI scripts.
 - **Automatic GitHub Settings Sync:** Settings persist in VS Code `settings.json`, syncing across all developer workstations (desktops, laptops, remote servers) upon GitHub login.
 - **Instant Silent Synchronization:** The extension silently mirrors configuration changes into local disk assets (`~/.jarvis/style/`) in real-time.
+
+---
+
+### 8. Automated Self-Healing Patch Daemon
+
+- **Zero-Friction VS Code Update Recovery:** VS Code updates often wipe custom file injections in `workbench.desktop.main.js` and `workbench.html`. The Self-Healing Daemon silently inspects patch integrity upon extension startup.
+- **Non-Blocking Background Repair:** Runs with debounced delays to ensure zero impact on editor startup performance, auto-reapplying patches and notifying you with a 1-click Reload prompt.
+- **Configurable Daemon Lifecycle:** Easily toggled via `jarvisEnhancer.enableSelfHealing` in VS Code settings.
+
+---
+
+### 9. Macro Auto-Discovery & Settings Sync Engine
+
+- **Automatic Rule Harvesting:** Scans and extracts custom founder macro abbreviations directly from `.instructions.md` rule files across user profiles, global prompts, and open workspaces.
+- **GitHub Settings Sync Integration:** Discovered macros are stored in `jarvisEnhancer.customMacros` and automatically synchronized across all machines via GitHub Settings Sync.
+- **Live Rule File Watcher:** File watchers observe `.instructions.md` changes and dynamically update macro autocomplete popup registries in real time.
 
 ---
 
@@ -107,9 +131,11 @@ Install the official stylesheet loader: [Custom CSS and JS Loader](https://marke
 | Command Title (Command Palette) | Command ID | Description |
 |:---|:---|:---|
 | `JARVIS: Sync Setup & Apply Styles` | `jarvisEnhancer.syncSetup` | Extracts assets to `~/.jarvis/style/`, updates `settings.json`, and triggers automatic style reload. |
+| `JARVIS: Discover Macros & Sync Settings` | `jarvisEnhancer.discoverMacros` | Scans `.instructions.md` rule files, extracts custom macro abbreviations, and syncs them to global settings and cloud sync. |
 | `JARVIS: Patch Chat Slash Intellisense` | `jarvisEnhancer.patchIntellisense` | Safely patches VS Code bundle with V8 AST syntax verification to enable mid-prompt slash suggestions and Monaco hooks. |
 | `JARVIS: Edit Custom CSS` | `jarvisEnhancer.editCSS` | Directly opens `~/.jarvis/style/vscode-custom.css` in editor for live styling adjustments. |
 | `JARVIS: Edit Custom JS` | `jarvisEnhancer.editJS` | Directly opens `~/.jarvis/style/vscode-custom.js` in editor for UI script enhancements. |
+| `JARVIS: Run Self-Healing & Verify Patches` | `jarvisEnhancer.runSelfHealing` | Inspects and automatically repairs workbench patches and styling injections if missing after VS Code updates. |
 
 ---
 

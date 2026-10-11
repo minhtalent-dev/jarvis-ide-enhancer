@@ -2,7 +2,7 @@
   "name": "jarvis-ide-enhancer",
   "displayName": "JARVIS IDE Enhancer",
   "description": "Enhance VS Code with JARVIS 3D cursor, chat styles, prompt slash intellisense, and UI automation.",
-  "version": "1.1.10",
+  "version": "1.1.12",
   "publisher": "minhtalent-dev",
   "author": "minh <minh.tuthienbao@vn.sharp-world.com>",
   "license": "MIT",
@@ -48,6 +48,37 @@
           "description": "Custom JS scripts to override or extend JARVIS behaviors. Automatically synced across devices via GitHub Settings Sync.",
           "editPresentation": "multilineText",
           "scope": "application"
+        },
+        "jarvisEnhancer.enableSelfHealing": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically repair patches and styling after VS Code updates."
+        },
+        "jarvisEnhancer.enableBacktickAutocomplete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable interactive autocomplete popup for founder macro commands in Chat Input."
+        },
+        "jarvisEnhancer.customMacros": {
+          "type": "array",
+          "default": [],
+          "description": "Custom founder macro abbreviations synchronized across devices.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string"
+              },
+              "desc": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "jarvisEnhancer.enableMacroAutoDiscovery": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically discover macro rules from .instructions.md files."
         }
       }
     },
@@ -55,6 +86,11 @@
       {
         "command": "jarvisEnhancer.syncSetup",
         "title": "Sync Setup & Apply Styles",
+        "category": "JARVIS"
+      },
+      {
+        "command": "jarvisEnhancer.discoverMacros",
+        "title": "JARVIS: Discover Macros & Sync Settings",
         "category": "JARVIS"
       },
       {
@@ -70,6 +106,11 @@
       {
         "command": "jarvisEnhancer.editJS",
         "title": "Edit Custom JS",
+        "category": "JARVIS"
+      },
+      {
+        "command": "jarvisEnhancer.runSelfHealing",
+        "title": "JARVIS: Run Self-Healing & Verify Patches",
         "category": "JARVIS"
       }
     ]

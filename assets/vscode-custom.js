@@ -47,10 +47,328 @@
         return tokens;
     }
 
+    /**
+     * Macro Registry - 20 backtick macros chuẩn của JARVIS
+     */
+    const JARVIS_DEFAULT_MACROS = [
+        { token: '`fp', desc: 'Reindex LSP, ma trận 4 tầng, plan 100% không điểm mù' },
+        { token: '`tt', desc: 'Tiếp tục thực hiện implementation plan' },
+        { token: '`rcm', desc: 'Gợi ý 3 option fix/execute/debug' },
+        { token: '`wtn', desc: 'Tạo worktree mới độc lập từ develop/main' },
+        { token: '`wtm', desc: 'Merge worktree vào develop/main & sync DB' },
+        { token: '`ver', desc: 'Cập nhật new version cho hệ thống/tài liệu' },
+        { token: '`rf', desc: 'Reindex function' },
+        { token: '`rp', desc: 'Reindex project' },
+        { token: '`rp1', desc: 'Kiểm tra plan/phase đúng đủ chuẩn 100%' },
+        { token: '`rp2', desc: 'Lên plan toàn diện bằng 17-auto-plan' },
+        { token: '`rp3', desc: 'Kiểm tra plan đủ chi tiết và không điểm mù' },
+        { token: '`rp4', desc: 'Reindex & kiểm tra triển khai xong plan/phase' },
+        { token: '`rp5', desc: 'Reindex & kiểm tra triển khai plan/phase' },
+        { token: '`git', desc: 'Cập nhật changelog, readme và commit git' },
+        { token: '`up', desc: 'Cập nhật thêm yêu cầu vào plan, không xóa cũ' },
+        { token: '`mit', desc: 'Thực hiện qua MCP minit-it-factory' },
+        { token: '`dp', desc: 'Auto-execute thực hiện chuẩn 100% plan/phase' },
+        { token: '`nbd', desc: 'Không build, không debug bằng browser' },
+        { token: '`nd', desc: 'Không debug bằng browser' },
+        { token: '`vrf', desc: 'Verify yêu cầu/kết quả thực thi có bằng chứng' }
+    ];
+
+    function getActiveMacros() {
+        const dynamicMacros = window.__jarvisDynamicMacros || window.__jarvisCustomMacros;
+        if (Array.isArray(dynamicMacros) && dynamicMacros.length > 0) {
+            return dynamicMacros;
+        }
+        return JARVIS_DEFAULT_MACROS;
+    }
+
+    let _macroPopupEl = null;
+    let _activeEditorForMacro = null;
+    let _currentReplaceRange = null;
+    let _filteredMacros = [];
+    let _selectedMacroIndex = 0;
+
+    function getOrCreateMacroPopup() {
+        if (typeof document === 'undefined') return null;
+        if (!_macroPopupEl) {
+            _macroPopupEl = document.getElementById('jarvis-macro-autocomplete-popup');
+            if (!_macroPopupEl) {
+                _macroPopupEl = document.createElement('div');
+                _macroPopupEl.id = 'jarvis-macro-autocomplete-popup';
+                _macroPopupEl.className = 'jarvis-macro-popup';
+                _macroPopupEl.addEventListener('mousedown', (e) => {
+                    // Giữ focus trên Monaco editor khi click vào popup
+                    e.preventDefault();
+                });
+                document.body.appendChild(_macroPopupEl);
+            }
+        }
+        return _macroPopupEl;
+    }
+
+    function hideMacroPopup() {
+        if (_macroPopupEl) {
+            _macroPopupEl.classList.remove('active');
+            _macroPopupEl.innerHTML = '';
+        }
+        _currentReplaceRange = null;
+        _filteredMacros = [];
+        _selectedMacroIndex = 0;
+        _activeEditorForMacro = null;
+    }
+
+    function isMacroPopupActive() {
+        return !!(_macroPopupEl && _macroPopupEl.classList.contains('active'));
+    }
+
+    function applyMacroToEditor(macro) {
+        if (!macro || !_currentReplaceRange || !_activeEditorForMacro) return;
+        try {
+            const targetEditor = _activeEditorForMacro;
+            const range = _currentReplaceRange;
+            const insertText = macro.token + ' ';
+            targetEditor.executeEdits('jarvis-macro', [{
+                range: range,
+                text: insertText
+            }]);
+            const nextCol = range.startColumn + insertText.length;
+            if (typeof targetEditor.setPosition === 'function') {
+                targetEditor.setPosition({
+                    lineNumber: range.startLineNumber,
+                    column: nextCol
+                });
+            }
+            if (typeof targetEditor.focus === 'function') {
+                targetEditor.focus();
+            }
+        } catch (err) {
+            console.error('[JARVIS] Error applying macro edit:', err);
+        }
+        hideMacroPopup();
+    }
+
+    function updateMacroSelectionHighlight() {
+        if (!_macroPopupEl) return;
+        const items = _macroPopupEl.querySelectorAll('.jarvis-macro-item');
+        items.forEach((item, idx) => {
+            if (idx === _selectedMacroIndex) {
+                item.classList.add('selected');
+                if (typeof item.scrollIntoView === 'function') {
+                    item.scrollIntoView({ block: 'nearest' });
+                }
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    function renderMacroPopup(filtered, selectedIdx) {
+        const popup = getOrCreateMacroPopup();
+        if (!popup) return;
+        popup.innerHTML = '';
+        filtered.forEach((m, idx) => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'jarvis-macro-item' + (idx === selectedIdx ? ' selected' : '');
+
+            const tokenSpan = document.createElement('span');
+            tokenSpan.className = 'jarvis-macro-token';
+            tokenSpan.textContent = m.token;
+
+            const descSpan = document.createElement('span');
+            descSpan.className = 'jarvis-macro-desc';
+            descSpan.textContent = m.desc;
+
+            itemEl.appendChild(tokenSpan);
+            itemEl.appendChild(descSpan);
+
+            itemEl.addEventListener('mouseenter', () => {
+                _selectedMacroIndex = idx;
+                updateMacroSelectionHighlight();
+            });
+
+            itemEl.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                applyMacroToEditor(m);
+            });
+
+            popup.appendChild(itemEl);
+        });
+
+        updateMacroSelectionHighlight();
+    }
+
+    function positionMacroPopup(editor, pos) {
+        const popup = getOrCreateMacroPopup();
+        if (!popup || !editor) return;
+
+        const domNode = typeof editor.getDomNode === 'function' ? editor.getDomNode() : null;
+        if (!domNode) return;
+
+        const editorRect = domNode.getBoundingClientRect();
+        const cursorCoord = typeof editor.getScrolledVisiblePosition === 'function'
+            ? editor.getScrolledVisiblePosition(pos)
+            : null;
+
+        popup.classList.add('active');
+
+        const popupHeight = popup.offsetHeight || 220;
+        const popupWidth = popup.offsetWidth || 340;
+
+        let left = editorRect.left + (cursorCoord ? cursorCoord.left : 10);
+        let top = editorRect.top + (cursorCoord ? (cursorCoord.top + cursorCoord.height + 4) : editorRect.height + 4);
+
+        if (top + popupHeight > window.innerHeight) {
+            const topAbove = editorRect.top + (cursorCoord ? cursorCoord.top : 0) - popupHeight - 6;
+            if (topAbove >= 10) {
+                top = topAbove;
+            } else {
+                top = Math.max(10, window.innerHeight - popupHeight - 10);
+            }
+        }
+
+        if (left + popupWidth > window.innerWidth) {
+            left = Math.max(10, window.innerWidth - popupWidth - 16);
+        }
+
+        popup.style.left = `${Math.round(left)}px`;
+        popup.style.top = `${Math.round(top)}px`;
+    }
+
+    function setupMacroAutocomplete(editor) {
+        if (!editor || editor.__macroAutocompleteAttached) return;
+        editor.__macroAutocompleteAttached = true;
+
+        const domNode = typeof editor.getDomNode === 'function' ? editor.getDomNode() : null;
+        if (!domNode) {
+            if (typeof editor.onDidFocusEditorText === 'function') {
+                const sub = editor.onDidFocusEditorText(() => {
+                    if (sub && typeof sub.dispose === 'function') sub.dispose();
+                    editor.__macroAutocompleteAttached = false;
+                    setupMacroAutocomplete(editor);
+                });
+            }
+            return;
+        }
+
+        function checkAndTriggerAutocomplete() {
+            try {
+                const model = typeof editor.getModel === 'function' ? editor.getModel() : null;
+                const pos = typeof editor.getPosition === 'function' ? editor.getPosition() : null;
+                if (!model || !pos) {
+                    if (_activeEditorForMacro === editor) hideMacroPopup();
+                    return;
+                }
+
+                const lineContent = model.getLineContent(pos.lineNumber);
+                const textBeforeCursor = lineContent.substring(0, pos.column - 1);
+                const match = /(?:^|[\s>:,;])(`[\p{L}0-9_.:-]*)$/u.exec(textBeforeCursor);
+
+                if (!match) {
+                    if (_activeEditorForMacro === editor) hideMacroPopup();
+                    return;
+                }
+
+                const fullMatch = match[0];
+                const rawToken = match[1];
+                const tokenStartInFullMatch = fullMatch.lastIndexOf(rawToken);
+                const startCol = (pos.column - 1) - (fullMatch.length - tokenStartInFullMatch) + 1;
+
+                const prefix = rawToken.toLowerCase();
+                const matched = getActiveMacros().filter((m) => m.token.toLowerCase().startsWith(prefix));
+
+                if (matched.length === 0) {
+                    if (_activeEditorForMacro === editor) hideMacroPopup();
+                    return;
+                }
+
+                _activeEditorForMacro = editor;
+                _currentReplaceRange = {
+                    startLineNumber: pos.lineNumber,
+                    startColumn: startCol,
+                    endLineNumber: pos.lineNumber,
+                    endColumn: pos.column
+                };
+                _filteredMacros = matched;
+                _selectedMacroIndex = 0;
+
+                renderMacroPopup(_filteredMacros, _selectedMacroIndex);
+                positionMacroPopup(editor, pos);
+            } catch (err) {
+                console.error('[JARVIS] Error triggering macro autocomplete:', err);
+            }
+        }
+
+        if (typeof editor.onDidChangeModelContent === 'function') {
+            editor.onDidChangeModelContent(checkAndTriggerAutocomplete);
+        }
+
+        if (typeof editor.onDidChangeCursorPosition === 'function') {
+            editor.onDidChangeCursorPosition(() => {
+                if (isMacroPopupActive() && _activeEditorForMacro === editor) {
+                    checkAndTriggerAutocomplete();
+                }
+            });
+        }
+
+        if (typeof editor.onDidBlurEditorText === 'function') {
+            editor.onDidBlurEditorText(() => {
+                setTimeout(() => {
+                    if (_activeEditorForMacro === editor) {
+                        hideMacroPopup();
+                    }
+                }, 150);
+            });
+        }
+
+        domNode.addEventListener('keydown', (e) => {
+            if (!isMacroPopupActive() || _activeEditorForMacro !== editor) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if (_filteredMacros.length > 0) {
+                    _selectedMacroIndex = (_selectedMacroIndex + 1) % _filteredMacros.length;
+                    updateMacroSelectionHighlight();
+                }
+                return;
+            }
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if (_filteredMacros.length > 0) {
+                    _selectedMacroIndex = (_selectedMacroIndex - 1 + _filteredMacros.length) % _filteredMacros.length;
+                    updateMacroSelectionHighlight();
+                }
+                return;
+            }
+
+            if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                if (_filteredMacros.length > 0 && _filteredMacros[_selectedMacroIndex]) {
+                    applyMacroToEditor(_filteredMacros[_selectedMacroIndex]);
+                } else {
+                    hideMacroPopup();
+                }
+                return;
+            }
+
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                hideMacroPopup();
+                return;
+            }
+        }, true);
+    }
+
     function attachChatPillDecorations(editor) {
         if (!editor || typeof editor.createDecorationsCollection !== 'function') return;
         if (editor.__slashPillAttached) return;
         editor.__slashPillAttached = true;
+
+        setupMacroAutocomplete(editor);
 
         const decos = editor.createDecorationsCollection();
 

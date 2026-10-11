@@ -244,3 +244,70 @@ div[class*="request"] .rendered-markdown .custom-backtick-pill,
     background-color: var(--vscode-chat-slashCommandBackground, rgba(38, 71, 120, 0.4)) !important;
     border-radius: 3px !important;
 }
+
+/* ==========================================================================
+   JARVIS Macro Autocomplete Popup (Glassmorphism & Purple Accent)
+   ========================================================================== */
+.jarvis-macro-popup {
+    position: fixed;
+    z-index: 99999;
+    min-width: 340px;
+    max-width: 500px;
+    max-height: 260px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: rgba(24, 24, 37, 0.95) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(192, 132, 252, 0.35) !important;
+    border-radius: 6px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 12px rgba(192, 132, 252, 0.2) !important;
+    padding: 4px !important;
+    box-sizing: border-box !important;
+    font-family: var(--vscode-editor-font-family, Consolas, 'Courier New', monospace) !important;
+    font-size: 12px !important;
+    display: none;
+    pointer-events: auto;
+}
+
+.jarvis-macro-popup.active {
+    display: block !important;
+}
+
+.jarvis-macro-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 5px 8px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    gap: 12px !important;
+    transition: background-color 0.1s ease;
+}
+
+.jarvis-macro-item.selected,
+.jarvis-macro-item:hover {
+    background-color: rgba(168, 85, 247, 0.25) !important;
+}
+
+.jarvis-macro-token {
+    color: #d8b4fe !important;
+    font-weight: 600 !important;
+    font-family: inherit !important;
+    background-color: rgba(168, 85, 247, 0.15) !important;
+    border: 1px solid rgba(192, 132, 252, 0.4) !important;
+    border-radius: 3px !important;
+    padding: 1px 4px !important;
+    white-space: nowrap !important;
+}
+
+.jarvis-macro-desc {
+    color: #a6adc8 !important;
+    font-size: 11px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    flex: 1 !important;
+    text-align: right !important;
+}
+

@@ -2,6 +2,21 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.12] - 2026-10-11
+
+### Added
+- **Macro Auto-Discovery Engine:** Automatically scans and parses custom macro definitions from `.instructions.md` rule files across user profiles and workspace configurations.
+- **Cloud Settings Sync Integration:** Discovered macros are synchronized into `jarvisEnhancer.customMacros` global settings and backed up to GitHub Settings Sync across all devices.
+- **Rule File Watcher:** Live background watcher automatically updates autocomplete suggestions whenever `.instructions.md` files are edited or created.
+- **New Command:** `JARVIS: Discover Macros & Sync Settings` (`jarvisEnhancer.discoverMacros`).
+
+## [1.1.11] - 2026-10-11
+
+### Added
+- **Backtick Macro Autocomplete Popup:** Interactive floating suggestion menu appearing directly at cursor position when typing backtick commands (`fp, `tt, `rcm, `wtn, etc.) in Chat Input with ArrowUp/ArrowDown navigation and Tab/Enter completion.
+- **Self-Healing Patch Daemon:** Automated non-blocking background repair service running on startup to verify and restore workbench patches after VS Code updates.
+- **New Command:** `JARVIS: Run Self-Healing & Verify Patches` (`jarvisEnhancer.runSelfHealing`).
+
 ## [1.1.10] - 2026-10-11
 
 ### Fixed
