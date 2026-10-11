@@ -1,5 +1,6 @@
 .vscode/**
 .gitignore
+.playwright-mcp/**
 planning/**
 *.vsix
 node_modules/**
