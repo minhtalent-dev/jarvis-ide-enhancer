@@ -655,7 +655,7 @@
     function evaluateEmptyToolElements(rootNode) {
         if (!rootNode || typeof document === 'undefined') return;
 
-        const selector = '.chat-tool-invocation-part, .chat-terminal-output-container, .chat-terminal-content-part, [class*="terminal-output"], .tool-output-part';
+        const selector = '.chat-tool-invocation-part, .chat-terminal-output-container, .chat-terminal-content-part, .interactive-result-code-block, .chat-output-code-block, .tool-output-part, .webview-output, [class*="terminal-output"], .chat-confirmation-widget, .chat-terminal-thinking-collapsible';
         const targets = rootNode.querySelectorAll ? Array.from(rootNode.querySelectorAll(selector)) : [];
         if (rootNode.matches && rootNode.matches(selector)) {
             targets.push(rootNode);
@@ -663,19 +663,58 @@
 
         for (const el of targets) {
             if ((el.dataset && el.dataset.empty === 'true') || el.getAttribute('data-empty') === 'true') continue;
-            if (el.querySelector('.codicon-loading, [class*="progress"]')) continue;
+            if (el.querySelector && el.querySelector('.codicon-loading, [class*="progress"]')) continue;
 
-            const outputEl = el.querySelector('.chat-terminal-output-terminal, .chat-terminal-output-content, .chat-tool-output, pre, .terminal-widget') || el;
-            const raw = outputEl.textContent || '';
+            // 1. Nếu phần tử là .webview-output và không có children và không có text
+            if (el.classList && el.classList.contains('webview-output')) {
+                if (el.children.length === 0 && (!el.textContent || el.textContent.trim() === '')) {
+                    el.setAttribute('data-empty', 'true');
+                    if (el.parentElement) {
+                        el.parentElement.setAttribute('data-empty', 'true');
+                    }
+                    continue;
+                }
+            }
+
+            // 2. Nếu phần tử chứa .webview-output:empty
+            const emptyWebview = el.querySelector ? (el.querySelector('.webview-output:empty') || (() => {
+                const w = el.querySelector('.webview-output');
+                return (w && w.children.length === 0 && (!w.textContent || w.textContent.trim() === '')) ? w : null;
+            })()) : null;
+            if (emptyWebview) {
+                el.setAttribute('data-empty', 'true');
+                continue;
+            }
+
+            // 3. Nếu phần tử có class chat-terminal-output-container-no-output hoặc chứa .chat-terminal-output-terminal-no-output hoặc .chat-terminal-output-empty
+            const hasNoOutputClass = el.classList && el.classList.contains('chat-terminal-output-container-no-output');
+            const hasNoOutputChild = el.querySelector && el.querySelector('.chat-terminal-output-terminal-no-output, .chat-terminal-output-empty');
+            if (hasNoOutputClass || hasNoOutputChild) {
+                el.setAttribute('data-empty', 'true');
+                const parentCollapsible = el.closest ? el.closest('.chat-terminal-content-part, .chat-terminal-thinking-collapsible') : null;
+                if (parentCollapsible) {
+                    parentCollapsible.setAttribute('data-empty', 'true');
+                }
+                continue;
+            }
+
+            // 4. Kiểm tra text: Bóc text từ output container (tránh lấy text của header title), lọc bỏ ANSI/OSC escape sequence và zero-width space
+            const outputEl = (el.querySelector && el.querySelector(
+                '.chat-terminal-output-terminal, .chat-terminal-output-content, .chat-tool-output, .xterm-rows, pre, .terminal-widget, .webview-output'
+            )) || (el.matches && el.matches('.chat-tool-invocation-part, .chat-terminal-thinking-collapsible') ? null : el);
+
+            const raw = outputEl ? (outputEl.textContent || '') : '';
             const cleanText = raw
                 .replace(/\u001b(?:\[[0-9;?]*[a-zA-Z]|\][^\u0007\u001b]*(?:\u0007|\u001b\\)?)/g, '')
                 .replace(/[\u200B-\u200D\uFEFF]/g, '')
                 .trim();
 
-            if (cleanText === '') {
+            if (cleanText === '' || cleanText === 'No output was produced by the command.') {
                 el.setAttribute('data-empty', 'true');
-                const parentContainer = el.closest ? el.closest('.chat-terminal-output-container, .chat-terminal-content-part') : null;
-                if (parentContainer) {
+                const parentContainer = el.closest ? el.closest(
+                    '.chat-terminal-output-container, .chat-terminal-content-part, .chat-terminal-thinking-collapsible, .interactive-result-code-block, .chat-output-code-block, .tool-output-part, .chat-tool-invocation-part'
+                ) : null;
+                if (parentContainer && parentContainer !== el) {
                     parentContainer.setAttribute('data-empty', 'true');
                 }
             }

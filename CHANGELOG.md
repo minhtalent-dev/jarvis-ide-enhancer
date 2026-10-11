@@ -2,6 +2,12 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.15] - 2026-10-11
+
+### Fixed
+- **Complete Elimination of Empty Tool/Terminal Output Boxes:** Removed `.interactive-session` CSS scope restriction and expanded selectors to cover `.chat-output-code-block`, `.interactive-result-code-block`, `.tool-output-part`, `.webview-output`, and collapsible thinking containers.
+- **Enhanced Empty Detection Engine:** Intelligent separation of output text from header titles, reliably identifying silent command executions and hidden terminal widgets.
+
 ## [1.1.14] - 2026-10-11
 
 ### Added
