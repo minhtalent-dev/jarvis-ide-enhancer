@@ -148,6 +148,27 @@
     }
 }
 
+/* ==========================================================================
+   Triệt tiêu khung Terminal / Tool Invocation Rỗng trong Chat Response
+   ========================================================================== */
+.interactive-session [data-empty="true"],
+.chat-terminal-output-container[data-empty="true"],
+.chat-terminal-content-part[data-empty="true"],
+.chat-tool-invocation-part[data-empty="true"],
+.interactive-session .chat-tool-invocation-part:not(:has(.codicon-loading)):has(.chat-tool-output:empty),
+.interactive-session .chat-terminal-output-container:not(:has(.codicon-loading)):has(.chat-terminal-output-terminal-no-output),
+.interactive-session .chat-terminal-output-container:not(:has(.codicon-loading)):has(.chat-terminal-output-empty),
+.interactive-session .chat-terminal-output-container:not(:has(.codicon-loading)):has(.xterm-rows:empty) {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+
 
 /* Triệt tiêu style code pill trong user request & queued box */
 .interactive-session .request .rendered-markdown code,

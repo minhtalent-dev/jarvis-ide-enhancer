@@ -4,7 +4,7 @@
 
 **Bespoke Luxury Visuals & Intelligent Prompt Engineering for VS Code**
 
-[![Version](https://img.shields.io/badge/version-v1.1.12-89b4fa.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.1.13-89b4fa.svg)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-89dceb.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/vscode-%5E1.85.0-74c7ec.svg)](https://code.visualstudio.com/)
 [![Architecture](https://img.shields.io/badge/architecture-Zero--Crash-a6e3a1.svg)](#-zero-crash-architecture)
@@ -102,6 +102,14 @@ Craft an elite, high-performance workspace for Founders & Developers: 3D Isometr
 - **Automatic Rule Harvesting:** Scans and extracts custom founder macro abbreviations directly from `.instructions.md` rule files across user profiles, global prompts, and open workspaces.
 - **GitHub Settings Sync Integration:** Discovered macros are stored in `jarvisEnhancer.customMacros` and automatically synchronized across all machines via GitHub Settings Sync.
 - **Live Rule File Watcher:** File watchers observe `.instructions.md` changes and dynamically update macro autocomplete popup registries in real time.
+
+---
+
+### 10. Zero-FOUC Empty Terminal Suppression
+
+- **Hybrid CSS & JS Guard:** Completely eliminates empty rectangular tool/terminal execution boxes in GitHub Copilot Chat when commands run silently without output (e.g. `node --check` or silent scripts).
+- **Zero-FOUC (Flash of Unstyled Content):** Leverages Chromium native CSS `:has()` rules to suppress empty execution containers instantaneously without visual jitter.
+- **ANSI Escape & Whitespace Sanitization:** Intelligent JS DOM observer strips xterm escape sequences (`\u001b`) and whitespace to reliably distinguish truly silent commands from active logs, preserving 100% visibility for commands with real stdout/stderr and standard Markdown code blocks.
 
 ---
 

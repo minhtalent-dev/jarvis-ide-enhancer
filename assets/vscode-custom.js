@@ -649,6 +649,39 @@
         }
     }
 
+    /**
+     * Triệt tiêu khung Terminal / Tool Invocation Rỗng trong Chat Response
+     */
+    function evaluateEmptyToolElements(rootNode) {
+        if (!rootNode || typeof document === 'undefined') return;
+
+        const selector = '.chat-tool-invocation-part, .chat-terminal-output-container, .chat-terminal-content-part, [class*="terminal-output"], .tool-output-part';
+        const targets = rootNode.querySelectorAll ? Array.from(rootNode.querySelectorAll(selector)) : [];
+        if (rootNode.matches && rootNode.matches(selector)) {
+            targets.push(rootNode);
+        }
+
+        for (const el of targets) {
+            if ((el.dataset && el.dataset.empty === 'true') || el.getAttribute('data-empty') === 'true') continue;
+            if (el.querySelector('.codicon-loading, [class*="progress"]')) continue;
+
+            const outputEl = el.querySelector('.chat-terminal-output-terminal, .chat-terminal-output-content, .chat-tool-output, pre, .terminal-widget') || el;
+            const raw = outputEl.textContent || '';
+            const cleanText = raw
+                .replace(/\u001b(?:\[[0-9;?]*[a-zA-Z]|\][^\u0007\u001b]*(?:\u0007|\u001b\\)?)/g, '')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .trim();
+
+            if (cleanText === '') {
+                el.setAttribute('data-empty', 'true');
+                const parentContainer = el.closest ? el.closest('.chat-terminal-output-container, .chat-terminal-content-part') : null;
+                if (parentContainer) {
+                    parentContainer.setAttribute('data-empty', 'true');
+                }
+            }
+        }
+    }
+
     if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
         const historyObserver = new MutationObserver((mutations) => {
             let shouldScan = false;
@@ -660,6 +693,9 @@
             }
             if (shouldScan) {
                 scanAndDecorateHistory();
+                if (document.body) {
+                    evaluateEmptyToolElements(document.body);
+                }
             }
         });
 
@@ -668,6 +704,7 @@
             if (target) {
                 historyObserver.observe(target, { childList: true, subtree: true });
                 scanAndDecorateHistory();
+                evaluateEmptyToolElements(document.body || target);
             }
         };
 
@@ -676,6 +713,14 @@
         } else {
             startObserver();
         }
+    }
+
+    if (typeof setInterval !== 'undefined') {
+        setInterval(() => {
+            if (typeof document !== 'undefined' && document.body) {
+                evaluateEmptyToolElements(document.body);
+            }
+        }, 600);
     }
 
     /**

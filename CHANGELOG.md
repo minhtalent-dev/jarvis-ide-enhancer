@@ -2,6 +2,12 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.13] - 2026-10-11
+
+### Fixed
+- **Empty Terminal Container Suppression (Hybrid Guard):** Completely eliminated empty rectangular tool/terminal boxes in chat response when commands run silently without output (e.g. `node --check`).
+- **ANSI & Zero-Width Space Sanitization:** Advanced filter strips terminal escape sequences (`\u001b`) and whitespace to reliably detect truly silent commands.
+
 ## [1.1.12] - 2026-10-11
 
 ### Added
