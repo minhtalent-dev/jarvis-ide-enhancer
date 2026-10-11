@@ -158,36 +158,42 @@
      * Bọc span pill cho token /cmd và `cmd trong bong bóng lịch sử chat
      */
     function decorateHistoryBubble(markdownEl) {
-        if (!markdownEl || markdownEl.__historyDecorated) return;
-        if (typeof document === 'undefined') return;
+        if (!markdownEl || typeof document === 'undefined') return;
 
-        if (markdownEl.closest('.interactive-response, .chat-response, [class*="response"]')) {
+        // Bỏ qua nếu thuộc response của AI
+        if (markdownEl.closest('.interactive-response, .chat-response, .chat-item.response, [class~="response"]')) {
             return;
         }
-        if (!markdownEl.closest('.interactive-request, .chat-item.request, [class*="request"]')) {
+        // Chỉ xử lý trong bong bóng request của user
+        const requestContainer = markdownEl.closest('.interactive-request, .chat-item.request, .monaco-list-row.request, [data-index].request, .chat-row.request, .chat-request, div[class*="request"]');
+        if (!requestContainer) {
             return;
         }
 
-        markdownEl.__historyDecorated = true;
+        const currentText = markdownEl.textContent || '';
+        // Tránh chạy lặp nếu text không đổi và đã có pill
+        if (markdownEl.__jarvisProcessedText === currentText && markdownEl.querySelector('.custom-wf-pill, .custom-backtick-pill')) {
+            return;
+        }
 
-        // Unwrap các thẻ <code> (không nằm trong <pre>) thành text node nếu chứa backtick macro token
+        // 1. Unwrap các thẻ <code> inline (không thuộc <pre>) thành text node có backtick
         const codeElements = Array.from(markdownEl.querySelectorAll('code')).filter(
             (codeEl) => !codeEl.closest('pre')
         );
         for (const codeEl of codeElements) {
             const rawContent = codeEl.textContent || '';
-            if (findBacktickMacroTokens('`' + rawContent + '`').length > 0) {
-                const rawText = '`' + rawContent + '`';
-                const textNode = document.createTextNode(rawText);
-                if (codeEl.parentNode) {
-                    codeEl.parentNode.replaceChild(textNode, codeEl);
-                }
+            const textNode = document.createTextNode('`' + rawContent + '`');
+            if (codeEl.parentNode) {
+                codeEl.parentNode.replaceChild(textNode, codeEl);
             }
         }
         if (typeof markdownEl.normalize === 'function') {
             markdownEl.normalize();
         }
 
+        markdownEl.__jarvisProcessedText = markdownEl.textContent || '';
+
+        // 2. Duyệt các text node và thay thế các tokens
         const walker = document.createTreeWalker(
             markdownEl,
             NodeFilter.SHOW_TEXT,
@@ -213,17 +219,35 @@
         }
 
         const slashRe = /(?:^|[\s>:,;])(\/[\p{L}0-9_.:-]+)/gu;
+        const inlineCodeRe = /(?:^|[^\\])`([^`\r\n]+)`(?=[\s.,;:!?)\]\r\n]|$)/gu;
 
         for (const textNode of nodesToReplace) {
             const text = textNode.nodeValue;
-            const allTokens = [];
+            const allItems = [];
 
+            // Quét các inline code thật sự để phục hồi lại thẻ <code>
+            inlineCodeRe.lastIndex = 0;
+            let icm;
+            while ((icm = inlineCodeRe.exec(text)) !== null) {
+                const full = icm[0];
+                const codeContent = icm[1];
+                const startIdx = icm.index + full.indexOf('`');
+                const endIdx = startIdx + codeContent.length + 2;
+                allItems.push({
+                    start: startIdx,
+                    end: endIdx,
+                    type: 'inline-code',
+                    content: codeContent
+                });
+            }
+
+            // Quét slash commands
             slashRe.lastIndex = 0;
             let sm;
             while ((sm = slashRe.exec(text)) !== null) {
                 const rawToken = sm[1];
                 const tokenStart = sm.index + sm[0].lastIndexOf(rawToken);
-                allTokens.push({
+                allItems.push({
                     token: rawToken,
                     start: tokenStart,
                     end: tokenStart + rawToken.length,
@@ -231,9 +255,10 @@
                 });
             }
 
+            // Quét backtick macros
             const backtickTokens = findBacktickMacroTokens(text);
             for (const bt of backtickTokens) {
-                allTokens.push({
+                allItems.push({
                     token: bt.token,
                     start: bt.start,
                     end: bt.end,
@@ -241,29 +266,41 @@
                 });
             }
 
-            allTokens.sort((a, b) => a.start - b.start);
+            // Sắp xếp theo vị trí xuất hiện
+            allItems.sort((a, b) => a.start - b.start);
 
             const nonOverlapping = [];
             let cursor = 0;
-            for (const tok of allTokens) {
-                if (tok.start >= cursor) {
-                    nonOverlapping.push(tok);
-                    cursor = tok.end;
+            for (const item of allItems) {
+                if (item.start >= cursor) {
+                    nonOverlapping.push(item);
+                    cursor = item.end;
                 }
             }
 
             if (nonOverlapping.length > 0) {
                 const frag = document.createDocumentFragment();
                 let lastIndex = 0;
-                for (const tok of nonOverlapping) {
-                    if (tok.start > lastIndex) {
-                        frag.appendChild(document.createTextNode(text.slice(lastIndex, tok.start)));
+                for (const item of nonOverlapping) {
+                    if (item.start > lastIndex) {
+                        frag.appendChild(document.createTextNode(text.slice(lastIndex, item.start)));
                     }
-                    const span = document.createElement('span');
-                    span.className = tok.type === 'slash' ? 'custom-wf-pill' : 'custom-backtick-pill';
-                    span.textContent = tok.token;
-                    frag.appendChild(span);
-                    lastIndex = tok.end;
+                    if (item.type === 'slash') {
+                        const span = document.createElement('span');
+                        span.className = 'custom-wf-pill';
+                        span.textContent = item.token;
+                        frag.appendChild(span);
+                    } else if (item.type === 'backtick') {
+                        const span = document.createElement('span');
+                        span.className = 'custom-backtick-pill';
+                        span.textContent = item.token;
+                        frag.appendChild(span);
+                    } else if (item.type === 'inline-code') {
+                        const code = document.createElement('code');
+                        code.textContent = item.content;
+                        frag.appendChild(code);
+                    }
+                    lastIndex = item.end;
                 }
                 if (lastIndex < text.length) {
                     frag.appendChild(document.createTextNode(text.slice(lastIndex)));
@@ -280,6 +317,10 @@
      */
     function scanAndDecorateHistory() {
         if (typeof document === 'undefined') return;
+        if (!scanAndDecorateHistory._polling && typeof setInterval !== 'undefined') {
+            scanAndDecorateHistory._polling = true;
+            setInterval(scanAndDecorateHistory, 600);
+        }
         try {
             const targets = document.querySelectorAll(
                 '.interactive-request .rendered-markdown, .chat-item.request .rendered-markdown, .monaco-list-row.request .rendered-markdown, [data-index].request .rendered-markdown, .chat-row.request .rendered-markdown, .chat-request .rendered-markdown, div[class*="request"] .rendered-markdown'
