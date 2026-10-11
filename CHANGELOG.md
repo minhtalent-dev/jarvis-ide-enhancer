@@ -2,6 +2,17 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.14] - 2026-10-11
+
+### Added
+- **JARVIS Hybrid Vault Manager:** Full export and restore capabilities for the entire Agent Customizations ecosystem (13 MCP Servers, 36 Skills, 6 Prompts & Rules, 5 Custom Model Providers, and Custom Styles).
+- **AES-256-GCM Military-Grade Vault Encryption:** Encrypt and compress custom setups with a master passphrase, protecting all API keys, database connection strings, and private reverse proxy tunnels.
+- **Zero-Leak Sanitized Template Export:** Automatic regex redaction of sensitive credentials, passwords, and machine-bound paths for safe sharing and public version control.
+- **Cross-Platform Path Tokenization:** Normalizes absolute paths using `${userHome}` and `${mcpStorage}` across Windows, macOS, and Linux.
+- **New Commands:**
+  - `JARVIS: Export Agent Customizations Vault` (`jarvisEnhancer.exportVault`)
+  - `JARVIS: Import Agent Customizations Vault` (`jarvisEnhancer.importVault`)
+
 ## [1.1.13] - 2026-10-11
 
 ### Fixed

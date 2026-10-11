@@ -4,7 +4,7 @@
 
 **Bespoke Luxury Visuals & Intelligent Prompt Engineering for VS Code**
 
-[![Version](https://img.shields.io/badge/version-v1.1.13-89b4fa.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.1.14-89b4fa.svg)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-89dceb.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/vscode-%5E1.85.0-74c7ec.svg)](https://code.visualstudio.com/)
 [![Architecture](https://img.shields.io/badge/architecture-Zero--Crash-a6e3a1.svg)](#-zero-crash-architecture)
@@ -113,6 +113,15 @@ Craft an elite, high-performance workspace for Founders & Developers: 3D Isometr
 
 ---
 
+### 11. JARVIS Hybrid Vault Manager (Agent Customizations Sync)
+
+- **Complete Agent Ecosystem Export & Restore:** Back up and restore all 5 agent customization pillars across machines: 13 MCP Servers (`mcp.json`, `settings.json`), 36 Skills (`~/.agents/skills/`, `~/.copilot/skills/`, `~/.claude/skills/`), 6 Prompts & Rules, 5 Custom Model Providers (`chatLanguageModels.json`), and custom styling assets.
+- **AES-256-GCM Military-Grade Encryption:** Protect your private API keys, database connection strings, and secure tunnels behind a single Master Passphrase with scrypt KDF and Gzip compression (`.jarvis-vault`).
+- **Zero-Leak Sanitized Template:** Automatically redacts sensitive passwords, credentials, and machine-bound paths with cross-platform tokenization (`${userHome}`, `${mcpStorage}`) for safe sharing and public version control.
+- **Automated SecretStorage & Profile Binding:** Intelligently discovers active profiles and seamlessly restores credentials to native VS Code SecretStorage (`context.secrets`) on target devices.
+
+---
+
 ## 🛠️ Setup & Usage
 
 ### Prerequisites
@@ -144,6 +153,8 @@ Install the official stylesheet loader: [Custom CSS and JS Loader](https://marke
 | `JARVIS: Edit Custom CSS` | `jarvisEnhancer.editCSS` | Directly opens `~/.jarvis/style/vscode-custom.css` in editor for live styling adjustments. |
 | `JARVIS: Edit Custom JS` | `jarvisEnhancer.editJS` | Directly opens `~/.jarvis/style/vscode-custom.js` in editor for UI script enhancements. |
 | `JARVIS: Run Self-Healing & Verify Patches` | `jarvisEnhancer.runSelfHealing` | Inspects and automatically repairs workbench patches and styling injections if missing after VS Code updates. |
+| `JARVIS: Export Agent Customizations Vault` | `jarvisEnhancer.exportVault` | Bundles and exports MCP servers, skills, prompts, models, and styles into an encrypted vault or sanitized template. |
+| `JARVIS: Import Agent Customizations Vault` | `jarvisEnhancer.importVault` | Restores agent customizations from a `.jarvis-vault` package or template, auto-rehydrating paths and secrets. |
 
 ---
 

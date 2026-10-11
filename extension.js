@@ -4,6 +4,7 @@ const path = require('path');
 const os = require('os');
 const vm = require('vm');
 const crypto = require('crypto');
+const { exportVault, importVault } = require('./src/sync/vaultManager');
 
 let logger;
 let isHealingRunning = false;
@@ -576,6 +577,113 @@ async function openConfigFile(context, fileName) {
     }
 }
 
+/**
+ * Xử lý lệnh xuất Vault (Mã hóa toàn bộ hoặc Bản mẫu sạch)
+ */
+async function handleExportVault(context) {
+    try {
+        const selected = await vscode.window.showQuickPick([
+            {
+                label: '🔒 Mã hóa toàn bộ với Master Passphrase (*.jarvis-vault)',
+                detail: 'Mã hóa AES-256-GCM toàn bộ 5 phân hệ: MCPs, Skills, Prompts, Models, Styles. An toàn tuyệt đối.',
+                mode: 'encrypted'
+            },
+            {
+                label: '🧹 Xuất bản mẫu sạch đã khử thông tin nhạy cảm (*.json)',
+                detail: 'Tự động bóc tách mật khẩu DB, API keys, private tunnels và đường dẫn tuyệt đối.',
+                mode: 'sanitized'
+            }
+        ], {
+            placeHolder: 'Chọn chế độ đóng gói Vault cho JARVIS Agent Customizations'
+        });
+
+        if (!selected) return;
+
+        if (selected.mode === 'encrypted') {
+            const passphrase = await vscode.window.showInputBox({
+                password: true,
+                prompt: 'Nhập Master Passphrase mã hóa Vault (tối thiểu 8 ký tự)',
+                ignoreFocusOut: true,
+                validateInput: v => (!v || v.length < 8 ? 'Mật khẩu phải từ 8 ký tự trở lên' : null)
+            });
+
+            if (!passphrase) return;
+
+            const saveUri = await vscode.window.showSaveDialog({
+                filters: { 'JARVIS Vault (*.jarvis-vault)': ['jarvis-vault'] },
+                saveLabel: 'Xuất Encrypted Vault'
+            });
+
+            if (!saveUri) return;
+
+            const res = exportVault(passphrase, 'encrypted');
+            fs.writeFileSync(saveUri.fsPath, res.buffer);
+            vscode.window.showInformationMessage('⚡ JARVIS: Đã xuất Encrypted Vault thành công! (13 MCPs, 36 Skills, 6 Prompts, 5 Models)');
+        } else if (selected.mode === 'sanitized') {
+            const saveUri = await vscode.window.showSaveDialog({
+                filters: { 'JSON Template (*.json)': ['json'] },
+                saveLabel: 'Xuất Sanitized Template'
+            });
+
+            if (!saveUri) return;
+
+            const res = exportVault(null, 'sanitized');
+            fs.writeFileSync(saveUri.fsPath, res.content, 'utf8');
+            vscode.window.showInformationMessage('⚡ JARVIS: Đã xuất Sanitized Template thành công! (Zero-Leak)');
+        }
+    } catch (err) {
+        if (logger) logger.error(`Lỗi xuất Vault: ${err.message}`);
+        vscode.window.showErrorMessage(`Lỗi xuất Vault: ${err.message}`);
+    }
+}
+
+/**
+ * Xử lý lệnh nhập và phục hồi Agent Customizations từ Vault
+ */
+async function handleImportVault(context) {
+    try {
+        const openUris = await vscode.window.showOpenDialog({
+            canSelectFiles: true,
+            canSelectFolders: false,
+            canSelectMany: false,
+            filters: { 'JARVIS Vault (*.jarvis-vault, *.json)': ['jarvis-vault', 'json'] },
+            openLabel: 'Nhập Vault'
+        });
+
+        if (!openUris || openUris.length === 0) return;
+
+        const filePath = openUris[0].fsPath;
+        const fileBuffer = fs.readFileSync(filePath);
+
+        let passphrase = null;
+        const isEncryptedVault = filePath.endsWith('.jarvis-vault') || (fileBuffer.length >= 12 && fileBuffer.subarray(0, 12).toString('utf8') === 'JARVIS_VAULT');
+        if (isEncryptedVault) {
+            passphrase = await vscode.window.showInputBox({
+                password: true,
+                prompt: 'Nhập Master Passphrase để giải mã Vault',
+                ignoreFocusOut: true
+            });
+            if (passphrase === undefined) return;
+        }
+
+        importVault(fileBuffer, passphrase);
+
+        await syncMacros(context, true);
+
+        vscode.window.showInformationMessage(
+            '⚡ JARVIS: Phục hồi Agent Customizations thành công! Hãy reload window để nạp môi trường mới.',
+            'Reload Window'
+        ).then(action => {
+            if (action === 'Reload Window') {
+                vscode.commands.executeCommand('workbench.action.reloadWindow');
+            }
+        });
+    } catch (err) {
+        if (logger) logger.error(`Lỗi nhập Vault: ${err.message}`);
+        vscode.window.showErrorMessage(`Lỗi nhập Vault: ${err.message}`);
+    }
+}
+
 function activate(context) {
     logger = vscode.window.createOutputChannel('JARVIS IDE Enhancer', { log: true });
     context.subscriptions.push(logger);
@@ -602,7 +710,9 @@ function activate(context) {
         vscode.commands.registerCommand('jarvisEnhancer.patchIntellisense', () => patchIntellisense()),
         vscode.commands.registerCommand('jarvisEnhancer.editCSS', () => openConfigFile(context, 'vscode-custom.css')),
         vscode.commands.registerCommand('jarvisEnhancer.editJS', () => openConfigFile(context, 'vscode-custom.js')),
-        vscode.commands.registerCommand('jarvisEnhancer.runSelfHealing', () => runSelfHealingDaemon(context))
+        vscode.commands.registerCommand('jarvisEnhancer.runSelfHealing', () => runSelfHealingDaemon(context)),
+        vscode.commands.registerCommand('jarvisEnhancer.exportVault', () => handleExportVault(context)),
+        vscode.commands.registerCommand('jarvisEnhancer.importVault', () => handleImportVault(context))
     );
 
     // Tự động quét và đồng bộ macro sau khi khởi động
@@ -633,5 +743,7 @@ module.exports = {
     activate,
     deactivate,
     discoverMacrosFromRules,
-    syncMacros
+    syncMacros,
+    handleExportVault,
+    handleImportVault
 };
