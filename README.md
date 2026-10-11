@@ -4,7 +4,7 @@
 
 **Bespoke Luxury Visuals & Intelligent Prompt Engineering for VS Code**
 
-[![Version](https://img.shields.io/badge/version-v1.1.9-89b4fa.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.1.10-89b4fa.svg)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-89dceb.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/vscode-%5E1.85.0-74c7ec.svg)](https://code.visualstudio.com/)
 [![Architecture](https://img.shields.io/badge/architecture-Zero--Crash-a6e3a1.svg)](#-zero-crash-architecture)

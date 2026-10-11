@@ -2,6 +2,13 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.10] - 2026-10-11
+
+### Fixed
+- **Multi-Macro Request Unwrapping:** Resolved an issue where multiple backtick commands in a single prompt caused pill styling to disappear in conversation history.
+- **Virtualized List Resilience:** Fixed style dropping when scrolling or recycling chat rows in Monaco list view.
+- **Dynamic Polling Guard:** Added automated background reconciliation to keep pill decorations synchronized after asynchronous markdown renders.
+
 ## [1.1.9] - 2026-10-09
 
 ### Added
