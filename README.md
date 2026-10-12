@@ -4,7 +4,7 @@
 
 **Bespoke Luxury Visuals & Intelligent Prompt Engineering for VS Code**
 
-[![Version](https://img.shields.io/badge/version-v1.1.27-89b4fa.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.1.30-89b4fa.svg)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-89dceb.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/vscode-%5E1.85.0-74c7ec.svg)](https://code.visualstudio.com/)
 [![Architecture](https://img.shields.io/badge/architecture-Zero--Crash-a6e3a1.svg)](#-zero-crash-architecture)
@@ -128,6 +128,15 @@ Craft an elite, high-performance workspace for Founders & Developers: 3D Isometr
 - **Zero-File Cloud Synchronization:** Encrypts and compresses all agent customizations into an armored AES-256-GCM payload stored directly within VS Code application configuration (`jarvisEnhancer.cloudVaultPayload`), syncing silently across machines through native GitHub Settings Sync.
 - **Auto-Detection on Target Devices:** Extension observes incoming cloud payloads upon VS Code startup, notifying the user and offering one-click interactive restoration with master passphrase verification.
 - **End-to-End Key Security:** Passphrases are never synced or cached; decryption occurs entirely in-memory on the target machine with cross-platform path adaptation.
+
+---
+
+### 13. Chat Timeline Minimap & Glassmorphism Hover Preview (Codex-Style)
+
+- **Interactive Codex-Style Timeline Rail:** Vertical timeline rail anchored on the right side of the Copilot Chat container (`right: 14px`) providing at-a-glance visibility over long multi-turn sessions (10-50+ turns) without obstructing the native scrollbar.
+- **Theme-Adaptive Glassmorphism Hover Card:** Hovering any timeline tick displays an instant high-density preview card featuring user question titles, turn indices, and content snippets with frosted glass blur (`backdrop-filter: blur(16px)`), inheriting 100% of the active VS Code theme color variables.
+- **Virtualization-Aware Smooth Reveal:** Smart dual-mode scroll controller smoothly navigates to target prompts whether currently in the DOM or unmounted by Monaco List virtualization.
+- **Zero-Core Patch Architecture:** 100% pure client-side implementation running in `vscode-custom.js` and `vscode-custom.css`, completely isolated from `workbench.desktop.main.js`.
 
 ---
 

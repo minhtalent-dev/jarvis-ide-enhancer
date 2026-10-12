@@ -802,6 +802,731 @@
         }
     }
 
+    /**
+     * ==========================================================================
+     * JARVIS Chat Timeline Minimap & Hover Preview Card
+     * Zero-Core Patch: 100% Client-side Minimap cho Copilot Chat
+     * ==========================================================================
+     */
+
+    if (typeof window !== 'undefined') {
+        window.__jarvisSessionCache = window.__jarvisSessionCache || new Map();
+    }
+
+    function revealTurn(turn, chatContainer) {
+        if (!turn || !chatContainer) return;
+        const scrollable = chatContainer.querySelector('.monaco-scrollable-element');
+        if (!scrollable) return;
+
+        const triggerUpdate = () => {
+            if (typeof chatContainer.__jarvisUpdateTimeline === 'function') {
+                chatContainer.__jarvisUpdateTimeline();
+            }
+        };
+
+        // 1. Kiểm tra nếu phần tử đã có sẵn trong DOM và không phải placeholder
+        let targetRow = null;
+        if (!turn.isPlaceholder) {
+            if (turn.dataIndex !== null && turn.dataIndex !== undefined) {
+                targetRow = chatContainer.querySelector(`[data-index="${turn.dataIndex}"]`);
+            }
+            if (!targetRow && turn.text) {
+                const rows = chatContainer.querySelectorAll(
+                    '.interactive-request, .monaco-list-row.request, [data-index].request, .chat-row.request, .chat-request, div[class*="request"]'
+                );
+                for (const r of rows) {
+                    if ((r.textContent || '').trim().startsWith(turn.text.substring(0, 30))) {
+                        targetRow = r.closest('.monaco-list-row') || r;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (targetRow && typeof targetRow.scrollIntoView === 'function') {
+            targetRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(triggerUpdate, 150);
+            setTimeout(triggerUpdate, 300);
+            return;
+        }
+
+        // 2. Nếu turn.isPlaceholder hoặc phần tử chưa có trong DOM: cuộn theo tỷ lệ trên .monaco-scrollable-element
+        const ratio = typeof turn.estimatedOffsetRatio === 'number'
+            ? turn.estimatedOffsetRatio
+            : (typeof turn.lastKnownTop === 'number' && scrollable.scrollHeight > 0
+                ? turn.lastKnownTop / Math.max(scrollable.scrollHeight - scrollable.clientHeight, 1)
+                : 0);
+
+        const targetTop = Math.round(ratio * (scrollable.scrollHeight - scrollable.clientHeight));
+
+        if (typeof scrollable.scrollTo === 'function') {
+            scrollable.scrollTo({ top: targetTop, behavior: 'smooth' });
+        } else {
+            scrollable.scrollTop = targetTop;
+        }
+
+        // Sau 150ms và 300ms, tự động kích hoạt updateTimeline() để bắt các row vừa mount
+        setTimeout(triggerUpdate, 150);
+        setTimeout(triggerUpdate, 300);
+
+        // 3. Snap chính xác khi row mount lại vào DOM
+        let attempts = 0;
+        const snapInterval = setInterval(() => {
+            attempts++;
+            let mountedRow = null;
+            if (turn.dataIndex !== null && turn.dataIndex !== undefined) {
+                mountedRow = chatContainer.querySelector(`[data-index="${turn.dataIndex}"]`);
+            }
+            if (!mountedRow && turn.text) {
+                const rows = chatContainer.querySelectorAll(
+                    '.interactive-request, .monaco-list-row.request, [data-index].request, .chat-row.request, .chat-request, div[class*="request"]'
+                );
+                for (const r of rows) {
+                    if ((r.textContent || '').trim().startsWith(turn.text.substring(0, 30))) {
+                        mountedRow = r.closest('.monaco-list-row') || r;
+                        break;
+                    }
+                }
+            }
+            if (mountedRow && typeof mountedRow.scrollIntoView === 'function') {
+                clearInterval(snapInterval);
+                mountedRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                triggerUpdate();
+            } else if (attempts >= 10) {
+                clearInterval(snapInterval);
+            }
+        }, 50);
+    }
+
+    /**
+     * Tìm phần tử response AI liền kề của một request row
+     */
+    function findAiResponseElement(rowEl, dataIndex, chatContainer) {
+        if (!rowEl) return null;
+
+        // 1. Kiểm tra response lồng bên trong rowEl (nếu cấu trúc container gộp)
+        const innerResp = rowEl.querySelector('.interactive-response, .chat-response, .chat-item.response, [class~="response"]');
+        if (innerResp && !innerResp.matches('.request, [class*="request"]')) return innerResp;
+
+        // 2. Tìm trong các phần tử kế tiếp cùng cấp (nextElementSibling)
+        let sib = rowEl.nextElementSibling;
+        while (sib) {
+            if (sib.matches && (sib.matches('.interactive-request, .chat-item.request, [class*="request"]') || sib.classList.contains('request'))) {
+                break; // Đã chạm request tiếp theo
+            }
+            if ((sib.matches && (sib.matches('.interactive-response, .chat-response, [class*="response"]') || sib.classList.contains('response'))) ||
+                sib.querySelector('.interactive-response, .chat-response, .chat-item.response, .rendered-markdown')) {
+                return sib;
+            }
+            sib = sib.nextElementSibling;
+        }
+
+        // 3. Tra cứu qua data-index liền kề (dataIndex + 1)
+        if (dataIndex !== null && dataIndex !== undefined && chatContainer) {
+            const nextRow = chatContainer.querySelector(`[data-index="${dataIndex + 1}"]`);
+            if (nextRow && !nextRow.matches('.request, [class*="request"]') && !nextRow.querySelector('.interactive-request-content')) {
+                return nextRow;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Trích xuất thông minh 1-2 dòng đầu câu trả lời của AI hoặc bullet points
+     */
+    function extractAiResponseSnippet(respEl) {
+        if (!respEl) return '';
+        const mdEl = respEl.querySelector('.rendered-markdown') ||
+                     respEl.querySelector('.chat-response-content') ||
+                     respEl.querySelector('.interactive-response-content') ||
+                     respEl;
+
+        let clone;
+        try {
+            clone = mdEl.cloneNode(true);
+        } catch (e) {
+            return '';
+        }
+
+        const unwanted = clone.querySelectorAll('pre, code, .chat-terminal-output-container, .codicon-loading, [class*="progress"], [class*="toolbar"], [class*="actions"], table');
+        unwanted.forEach((el) => {
+            if (el.parentNode) el.parentNode.removeChild(el);
+        });
+
+        const text = (clone.textContent || '').trim();
+        if (!text) return '';
+
+        const lines = text.split('\n')
+            .map((l) => l.trim())
+            .filter((l) => l.length > 0 && !l.startsWith('```') && !l.startsWith('|'));
+
+        if (lines.length === 0) return '';
+
+        const snippetLines = lines.slice(0, 2);
+        let snippet = snippetLines.join(' ');
+        if (snippet.length > 140) {
+            snippet = snippet.substring(0, 137) + '...';
+        }
+        return snippet;
+    }
+
+    function updateViewportAndActiveTick(chatContainer, railEl, viewportIndicator) {
+        const scrollable = chatContainer.querySelector('.monaco-scrollable-element');
+        if (!scrollable || !railEl || !viewportIndicator) return;
+
+        const railHeight = railEl.clientHeight;
+        if (railHeight <= 0) return;
+
+        const scrollHeight = scrollable.scrollHeight || 1;
+        const clientHeight = scrollable.clientHeight || 1;
+        const scrollTop = scrollable.scrollTop || 0;
+
+        const maxScroll = Math.max(scrollHeight - clientHeight, 1);
+        const scrollRatio = Math.min(Math.max(scrollTop / maxScroll, 0), 1);
+
+        const trackEl = railEl.querySelector('.jarvis-timeline-track');
+        let trackTop = 10;
+        let trackHeight = Math.max(railHeight - 20, 0);
+        if (trackEl && trackEl.style.display !== 'none') {
+            trackTop = parseFloat(trackEl.style.top) || 10;
+            trackHeight = parseFloat(trackEl.style.height) || trackHeight;
+        }
+
+        const indicatorTop = Math.round(trackTop + scrollRatio * trackHeight);
+        viewportIndicator.style.top = `${indicatorTop}px`;
+        viewportIndicator.style.height = '2px';
+
+        // Cập nhật tick active
+        const ticks = railEl.querySelectorAll('.jarvis-timeline-tick');
+        if (ticks.length === 0) return;
+
+        const vpStart = scrollTop;
+        const vpEnd = scrollTop + clientHeight;
+
+        let activeTick = null;
+        let minDistance = Infinity;
+
+        ticks.forEach((tick) => {
+            const turn = tick.__jarvisTurn;
+            if (!turn) return;
+            const turnPos = typeof turn.lastKnownTop === 'number'
+                ? turn.lastKnownTop
+                : (turn.estimatedOffsetRatio || 0) * scrollHeight;
+
+            if (turnPos >= vpStart - 40 && turnPos <= vpEnd) {
+                const dist = Math.abs(turnPos - vpStart);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    activeTick = tick;
+                }
+            }
+        });
+
+        if (!activeTick && ticks.length > 0) {
+            ticks.forEach((tick) => {
+                const turn = tick.__jarvisTurn;
+                if (!turn) return;
+                const turnPos = typeof turn.lastKnownTop === 'number'
+                    ? turn.lastKnownTop
+                    : (turn.estimatedOffsetRatio || 0) * scrollHeight;
+                const dist = Math.abs(turnPos - vpStart);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    activeTick = tick;
+                }
+            });
+        }
+
+        ticks.forEach((t) => {
+            if (t === activeTick) {
+                t.classList.add('active');
+            } else {
+                t.classList.remove('active');
+            }
+        });
+    }
+
+    function showHoverCard(cardEl, railEl, tickEl, turn) {
+        if (!cardEl || !railEl || !tickEl || !turn) return;
+
+        const title = cardEl.querySelector('.jarvis-timeline-card-title');
+        const badge = cardEl.querySelector('.jarvis-timeline-card-badge');
+        const time = cardEl.querySelector('.jarvis-timeline-card-time');
+        const snippet = cardEl.querySelector('.jarvis-timeline-card-snippet');
+
+        if (title) title.textContent = turn.title || 'User Prompt';
+        if (badge) badge.textContent = `Turn #${turn.number || 1}`;
+        if (time) time.textContent = turn.timestamp || '';
+
+        // Hiển thị tóm tắt câu trả lời của AI hoặc nội dung prompt
+        const displaySnippet = turn.responseSnippet ? turn.responseSnippet : (turn.snippet || '');
+        if (snippet) snippet.textContent = displaySnippet;
+
+        const railHeight = railEl.clientHeight;
+        const cardHeight = cardEl.offsetHeight || 90;
+        const tickTop = tickEl.offsetTop;
+
+        let cardTop = tickTop - Math.round(cardHeight / 2) + 2;
+        cardTop = Math.max(0, Math.min(cardTop, Math.max(railHeight - cardHeight, 0)));
+
+        cardEl.style.top = `${cardTop}px`;
+        cardEl.classList.add('visible');
+    }
+
+    function hideHoverCard(cardEl) {
+        if (cardEl) {
+            cardEl.classList.remove('visible');
+        }
+    }
+
+    function renderTimelineTicks(railEl, cardEl, turns, chatContainer, viewportIndicator) {
+        const railHeight = railEl.clientHeight || (chatContainer.clientHeight - 125);
+        if (railHeight <= 0) return;
+
+        const trackEl = railEl.querySelector('.jarvis-timeline-track');
+        const existingTicks = Array.from(railEl.querySelectorAll('.jarvis-timeline-tick'));
+
+        while (existingTicks.length < turns.length) {
+            const tick = document.createElement('div');
+            tick.className = 'jarvis-timeline-tick';
+            railEl.appendChild(tick);
+            existingTicks.push(tick);
+        }
+        while (existingTicks.length > turns.length) {
+            const tick = existingTicks.pop();
+            if (tick.parentNode) tick.parentNode.removeChild(tick);
+        }
+
+        const total = turns.length;
+        if (total === 0) return;
+
+        const tickPositions = [];
+
+        if (total <= 15) {
+            // Khi số turns <= 15: Phân bố khoảng cách đều thanh lịch từ 18px đến 30px mỗi tick (bắt đầu từ top 10px)
+            let step = 24;
+            if (total > 1) {
+                const maxStepForRail = Math.floor((railHeight - 20) / (total - 1));
+                step = Math.min(30, Math.max(18, maxStepForRail));
+                if (step * (total - 1) > railHeight - 20) {
+                    step = Math.max(6, maxStepForRail);
+                }
+            }
+
+            for (let i = 0; i < total; i++) {
+                const topPx = 10 + i * step;
+                tickPositions.push(topPx);
+            }
+        } else {
+            // Khi số turns > 15: Phân bố tỷ lệ theo chiều cao rail, đảm bảo khoảng cách tối thiểu giữa các tick >= 6px
+            const startTop = 10;
+            const availHeight = Math.max(railHeight - 20, 1);
+            let prevTop = startTop - 6;
+
+            for (let i = 0; i < total; i++) {
+                const turn = turns[i];
+                const ratio = typeof turn.estimatedOffsetRatio === 'number'
+                    ? turn.estimatedOffsetRatio
+                    : (i / Math.max(total - 1, 1));
+
+                let topPx = startTop + Math.round(ratio * availHeight);
+                if (topPx <= prevTop + 5) {
+                    topPx = prevTop + 6;
+                }
+                topPx = Math.min(Math.max(topPx, startTop), railHeight - 6);
+                prevTop = topPx;
+                tickPositions.push(topPx);
+            }
+        }
+
+        // Cập nhật đường track nối các tick
+        if (trackEl) {
+            const firstTop = tickPositions[0] !== undefined ? tickPositions[0] : 10;
+            const lastTop = tickPositions[total - 1] !== undefined ? tickPositions[total - 1] : firstTop;
+            const trackHeight = Math.max(lastTop - firstTop, 0);
+
+            trackEl.style.top = `${firstTop}px`;
+            trackEl.style.height = `${trackHeight}px`;
+            trackEl.style.display = total > 1 ? 'block' : 'none';
+        }
+
+        // Cập nhật vị trí và gắn listener cho từng tick
+        turns.forEach((turn, idx) => {
+            const tickEl = existingTicks[idx];
+            tickEl.__jarvisTurn = turn;
+            const topPx = tickPositions[idx];
+            tickEl.style.top = `${topPx}px`;
+
+            if (!tickEl.__jarvisEventsAttached) {
+                tickEl.__jarvisEventsAttached = true;
+
+                tickEl.addEventListener('mouseenter', () => {
+                    showHoverCard(cardEl, railEl, tickEl, tickEl.__jarvisTurn);
+                });
+
+                tickEl.addEventListener('mouseleave', (e) => {
+                    const related = e.relatedTarget;
+                    if (!cardEl.contains(related)) {
+                        hideHoverCard(cardEl);
+                    }
+                });
+
+                tickEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    revealTurn(tickEl.__jarvisTurn, chatContainer);
+                });
+            }
+        });
+
+        updateViewportAndActiveTick(chatContainer, railEl, viewportIndicator);
+    }
+
+    function setupChatTimelineMinimap(chatContainer) {
+        if (!chatContainer || chatContainer.__jarvisTimelineAttached) return;
+        chatContainer.__jarvisTimelineAttached = true;
+        chatContainer.__jarvisTurns = new Map();
+
+        const compStyle = window.getComputedStyle ? window.getComputedStyle(chatContainer) : null;
+        if (compStyle && compStyle.position === 'static') {
+            chatContainer.style.position = 'relative';
+        }
+
+        const railEl = document.createElement('div');
+        railEl.className = 'jarvis-chat-timeline-rail';
+
+        const trackEl = document.createElement('div');
+        trackEl.className = 'jarvis-timeline-track';
+        railEl.appendChild(trackEl);
+
+        const viewportIndicator = document.createElement('div');
+        viewportIndicator.className = 'jarvis-timeline-viewport-indicator';
+        railEl.appendChild(viewportIndicator);
+
+        const cardEl = document.createElement('div');
+        cardEl.className = 'jarvis-timeline-card';
+        cardEl.innerHTML = `
+            <div class="jarvis-timeline-card-header">
+                <div class="jarvis-timeline-card-title"></div>
+                <div class="jarvis-timeline-card-bookmark">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="jarvis-timeline-card-meta">
+                <span class="jarvis-timeline-card-badge">Turn #1</span>
+                <span class="jarvis-timeline-card-time"></span>
+            </div>
+            <div class="jarvis-timeline-card-snippet"></div>
+        `;
+        railEl.appendChild(cardEl);
+
+        railEl.addEventListener('mouseleave', () => {
+            hideHoverCard(cardEl);
+        });
+
+        chatContainer.appendChild(railEl);
+
+        let scrollAttached = false;
+        let scrollRafId = null;
+
+        function attachScrollListener() {
+            if (scrollAttached) return;
+            const scrollable = chatContainer.querySelector('.monaco-scrollable-element');
+            if (scrollable) {
+                scrollAttached = true;
+                scrollable.addEventListener('scroll', () => {
+                    if (scrollRafId) cancelAnimationFrame(scrollRafId);
+                    scrollRafId = requestAnimationFrame(() => {
+                        updateViewportAndActiveTick(chatContainer, railEl, viewportIndicator);
+                    });
+                }, { passive: true });
+            }
+        }
+
+        attachScrollListener();
+
+        function updateTimeline() {
+            if (chatContainer.clientWidth < 180) {
+                railEl.style.display = 'none';
+                return;
+            }
+
+            attachScrollListener();
+
+            // 1. Nhận diện session hiện tại (qua tiêu đề session trong DOM hoặc qua text của turn 0)
+            const sessionTitleEl = chatContainer.querySelector('.chat-title, .interactive-session-title, .title-label, .pane-header .title, .title') ||
+                                   (typeof document !== 'undefined' ? document.querySelector('.chat-editor-title, .interactive-title') : null);
+            const currentSessionTitle = sessionTitleEl ? (sessionTitleEl.textContent || '').trim() : '';
+
+            const row0 = chatContainer.querySelector('[data-index="0"]');
+            let turn0TextSnippet = '';
+            if (row0) {
+                const md0 = row0.querySelector('.rendered-markdown') || row0.querySelector('.interactive-request-content') || row0;
+                turn0TextSnippet = (md0.textContent || '').trim().substring(0, 40);
+            }
+
+            const currentSessionKey = currentSessionTitle ? `${currentSessionTitle}|${turn0TextSnippet}` : turn0TextSnippet;
+            if (currentSessionKey) {
+                if (chatContainer.__jarvisCurrentSession && chatContainer.__jarvisCurrentSession !== currentSessionKey) {
+                    chatContainer.__jarvisTurns.clear();
+                }
+                chatContainer.__jarvisCurrentSession = currentSessionKey;
+            }
+
+            // 2. Quét tất cả các .monaco-list-row trong chatContainer để lấy aria-setsize và maxIndexFound
+            const allListRows = chatContainer.querySelectorAll('.monaco-list-row');
+            let ariaSetSize = 0;
+            let maxIndexFound = -1;
+
+            allListRows.forEach((row) => {
+                const setSizeAttr = row.getAttribute('aria-setsize');
+                if (setSizeAttr) {
+                    const parsed = parseInt(setSizeAttr, 10);
+                    if (!isNaN(parsed) && parsed > ariaSetSize) {
+                        ariaSetSize = parsed;
+                    }
+                }
+                const idxAttr = row.getAttribute('data-index');
+                if (idxAttr !== null) {
+                    const parsed = parseInt(idxAttr, 10);
+                    if (!isNaN(parsed) && parsed > maxIndexFound) {
+                        maxIndexFound = parsed;
+                    }
+                }
+            });
+
+            const listEl = chatContainer.querySelector('.monaco-list');
+            if (listEl && listEl.getAttribute('aria-setsize')) {
+                const parsed = parseInt(listEl.getAttribute('aria-setsize'), 10);
+                if (!isNaN(parsed) && parsed > ariaSetSize) {
+                    ariaSetSize = parsed;
+                }
+            }
+
+            // Tính toán tổng số turn thực tế
+            const estimatedTurnCount = Math.max(
+                ariaSetSize ? Math.ceil(ariaSetSize / 2) : 0,
+                maxIndexFound >= 0 ? Math.ceil((maxIndexFound + 1) / 2) : 0,
+                chatContainer.__jarvisTurns.size,
+                1
+            );
+
+            const REQUEST_SELECTOR = '.interactive-request, .monaco-list-row.request, [data-index].request, .chat-row.request, .chat-request, .chat-item.request, div[class*="request"]';
+            const candidateNodes = chatContainer.querySelectorAll(REQUEST_SELECTOR);
+            const rowSet = new Set();
+            for (const node of candidateNodes) {
+                if (node.closest('.interactive-response, .chat-response, .chat-item.response, [class~="response"]')) {
+                    continue;
+                }
+                if (node.closest('.interactive-input-part, .chat-input-editor, .interactive-input-editor, .chat-input-widget, .chat-input-container')) {
+                    continue;
+                }
+                const rowEl = node.closest('.monaco-list-row') || node;
+                rowSet.add(rowEl);
+            }
+
+            const scrollable = chatContainer.querySelector('.monaco-scrollable-element');
+            const scrollableRect = scrollable ? scrollable.getBoundingClientRect() : null;
+            const totalScrollHeight = scrollable ? Math.max(scrollable.scrollHeight, 1) : 1;
+
+            if (rowSet.size === 0 && (chatContainer.querySelector('.chat-welcome-view') || (ariaSetSize === 0 && maxIndexFound < 0 && chatContainer.__jarvisTurns.size === 0))) {
+                chatContainer.__jarvisTurns.clear();
+                railEl.style.display = 'none';
+                return;
+            }
+
+            rowSet.forEach((rowEl) => {
+                const dataIndexStr = rowEl.getAttribute('data-index') || (rowEl.querySelector('[data-index]') && rowEl.querySelector('[data-index]').getAttribute('data-index'));
+                const dataIndex = dataIndexStr !== null && dataIndexStr !== undefined ? parseInt(dataIndexStr, 10) : null;
+
+                const mdEl = rowEl.querySelector('.rendered-markdown') || rowEl.querySelector('.interactive-request-content') || rowEl;
+                const rawText = (mdEl.textContent || '').trim();
+                if (!rawText) return;
+
+                if (dataIndex === 0 && chatContainer.__jarvisTurns.size > 0) {
+                    const turn0 = chatContainer.__jarvisTurns.get('idx_0');
+                    if (turn0 && turn0.text && !turn0.isPlaceholder && !rawText.startsWith(turn0.text.substring(0, 30)) && !turn0.text.startsWith(rawText.substring(0, 30))) {
+                        chatContainer.__jarvisTurns.clear();
+                    }
+                }
+
+                // Trích xuất response của AI liền kề
+                const respEl = findAiResponseElement(rowEl, dataIndex, chatContainer);
+                const respSnippet = extractAiResponseSnippet(respEl);
+
+                const turnKey = dataIndex !== null ? `idx_${dataIndex}` : `txt_${rawText.substring(0, 40)}`;
+                const altEvenKey = dataIndex !== null ? `idx_${Math.floor(dataIndex / 2) * 2}` : null;
+                let turn = chatContainer.__jarvisTurns.get(turnKey);
+                if (!turn && altEvenKey && chatContainer.__jarvisTurns.has(altEvenKey)) {
+                    turn = chatContainer.__jarvisTurns.get(altEvenKey);
+                }
+
+                const firstLine = rawText.split('\n')[0].trim();
+                const titleStr = firstLine.length > 50 ? firstLine.substring(0, 47) + '...' : firstLine;
+                const snippetStr = rawText.length > 130 ? rawText.substring(0, 127) + '...' : rawText;
+
+                if (!turn) {
+                    const now = new Date();
+                    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                    turn = {
+                        key: turnKey,
+                        dataIndex: dataIndex,
+                        text: rawText,
+                        title: titleStr,
+                        snippet: snippetStr,
+                        responseSnippet: respSnippet,
+                        timestamp: timeStr,
+                        createdTime: Date.now(),
+                        isPlaceholder: false
+                    };
+                    chatContainer.__jarvisTurns.set(turnKey, turn);
+                } else {
+                    turn.text = rawText;
+                    turn.title = titleStr;
+                    turn.snippet = snippetStr;
+                    turn.isPlaceholder = false;
+                    if (dataIndex !== null) turn.dataIndex = dataIndex;
+                    if (respSnippet) {
+                        turn.responseSnippet = respSnippet;
+                    }
+                    if (!turn.timestamp) {
+                        const now = new Date();
+                        turn.timestamp = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                    }
+                }
+
+                if (scrollable && scrollableRect) {
+                    const rowRect = rowEl.getBoundingClientRect();
+                    const rowTop = rowRect.top - scrollableRect.top + scrollable.scrollTop;
+                    turn.lastKnownTop = Math.max(0, rowTop);
+                    turn.estimatedOffsetRatio = Math.min(Math.max(rowTop / totalScrollHeight, 0), 1);
+                }
+
+                // Ghi đè placeholder bằng dữ liệu thật và lưu vào window.__jarvisSessionCache
+                if (typeof window !== 'undefined' && window.__jarvisSessionCache) {
+                    const cachePayload = {
+                        dataIndex: turn.dataIndex,
+                        text: turn.text,
+                        title: turn.title,
+                        snippet: turn.snippet,
+                        responseSnippet: turn.responseSnippet,
+                        timestamp: turn.timestamp,
+                        createdTime: turn.createdTime,
+                        estimatedOffsetRatio: turn.estimatedOffsetRatio,
+                        lastKnownTop: turn.lastKnownTop,
+                        isPlaceholder: false
+                    };
+                    window.__jarvisSessionCache.set(turnKey, cachePayload);
+                    if (altEvenKey && altEvenKey !== turnKey) {
+                        window.__jarvisSessionCache.set(altEvenKey, cachePayload);
+                    }
+                    if (chatContainer.__jarvisCurrentSession) {
+                        window.__jarvisSessionCache.set(`${chatContainer.__jarvisCurrentSession}:${turnKey}`, cachePayload);
+                        if (altEvenKey && altEvenKey !== turnKey) {
+                            window.__jarvisSessionCache.set(`${chatContainer.__jarvisCurrentSession}:${altEvenKey}`, cachePayload);
+                        }
+                    }
+                }
+            });
+
+            // Tự động tạo các turn vạch mốc đại diện (placeholder / cached turns) nếu estimatedTurnCount > chatContainer.__jarvisTurns.size
+            if (estimatedTurnCount > chatContainer.__jarvisTurns.size) {
+                for (let k = 0; k < estimatedTurnCount; k++) {
+                    const kKey = `idx_${k * 2}`;
+                    if (!chatContainer.__jarvisTurns.has(kKey)) {
+                        const ratio = k / Math.max(estimatedTurnCount - 1, 1);
+                        let cached = null;
+                        if (typeof window !== 'undefined' && window.__jarvisSessionCache) {
+                            if (chatContainer.__jarvisCurrentSession) {
+                                cached = window.__jarvisSessionCache.get(`${chatContainer.__jarvisCurrentSession}:${kKey}`);
+                            }
+                            if (!cached) {
+                                cached = window.__jarvisSessionCache.get(kKey);
+                            }
+                        }
+
+                        if (cached) {
+                            chatContainer.__jarvisTurns.set(kKey, {
+                                key: kKey,
+                                dataIndex: k * 2,
+                                text: cached.text || '',
+                                title: cached.title || `Lượt chat #${k + 1}`,
+                                snippet: cached.snippet || 'Nhấp vào vạch mốc để cuộn nhanh đến câu hỏi và phản hồi này.',
+                                responseSnippet: cached.responseSnippet || '',
+                                timestamp: cached.timestamp || '',
+                                createdTime: cached.createdTime || Date.now(),
+                                estimatedOffsetRatio: typeof cached.estimatedOffsetRatio === 'number' ? cached.estimatedOffsetRatio : ratio,
+                                lastKnownTop: cached.lastKnownTop,
+                                isPlaceholder: false
+                            });
+                        } else {
+                            chatContainer.__jarvisTurns.set(kKey, {
+                                key: kKey,
+                                dataIndex: k * 2,
+                                text: '',
+                                title: `Lượt chat #${k + 1}`,
+                                snippet: 'Nhấp vào vạch mốc để cuộn nhanh đến câu hỏi và phản hồi này.',
+                                responseSnippet: '',
+                                timestamp: '',
+                                createdTime: Date.now() + k,
+                                estimatedOffsetRatio: ratio,
+                                isPlaceholder: true
+                            });
+                        }
+                    }
+                }
+            }
+
+            const turns = Array.from(chatContainer.__jarvisTurns.values());
+            turns.sort((a, b) => {
+                if (a.dataIndex !== null && b.dataIndex !== null) return a.dataIndex - b.dataIndex;
+                if (typeof a.estimatedOffsetRatio === 'number' && typeof b.estimatedOffsetRatio === 'number') {
+                    return a.estimatedOffsetRatio - b.estimatedOffsetRatio;
+                }
+                return a.createdTime - b.createdTime;
+            });
+
+            turns.forEach((t, i) => {
+                t.number = i + 1;
+            });
+
+            if (turns.length === 0) {
+                railEl.style.display = 'none';
+                return;
+            }
+            railEl.style.display = 'block';
+
+            renderTimelineTicks(railEl, cardEl, turns, chatContainer, viewportIndicator);
+        }
+
+        chatContainer.__jarvisUpdateTimeline = updateTimeline;
+        updateTimeline();
+
+        if (typeof ResizeObserver !== 'undefined') {
+            const ro = new ResizeObserver(() => {
+                updateTimeline();
+            });
+            ro.observe(chatContainer);
+        }
+    }
+
+    function scanAndSetupChatTimelines() {
+        if (typeof document === 'undefined') return;
+        const chatContainers = document.querySelectorAll('.interactive-session, [class*="interactive-session"]');
+        for (const container of chatContainers) {
+            if (!container.__jarvisTimelineAttached) {
+                setupChatTimelineMinimap(container);
+            } else if (typeof container.__jarvisUpdateTimeline === 'function') {
+                container.__jarvisUpdateTimeline();
+            }
+        }
+    }
+
+    if (typeof window !== 'undefined') {
+        window.addEventListener('resize', scanAndSetupChatTimelines, { passive: true });
+    }
+
     if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
         const historyObserver = new MutationObserver((mutations) => {
             let shouldScan = false;
@@ -816,6 +1541,7 @@
                 if (document.body) {
                     evaluateEmptyToolElements(document.body);
                 }
+                scanAndSetupChatTimelines();
             }
         });
 
@@ -826,6 +1552,7 @@
                 scanAndDecorateHistory();
                 evaluateEmptyToolElements(document.body || target);
                 findAndAttachChatEditor();
+                scanAndSetupChatTimelines();
             }
         };
 
@@ -833,10 +1560,12 @@
             document.addEventListener('DOMContentLoaded', () => {
                 startObserver();
                 findAndAttachChatEditor();
+                scanAndSetupChatTimelines();
             });
         } else {
             startObserver();
             findAndAttachChatEditor();
+            scanAndSetupChatTimelines();
         }
     }
 
@@ -844,6 +1573,7 @@
         setInterval(() => {
             if (typeof document !== 'undefined' && document.body) {
                 evaluateEmptyToolElements(document.body);
+                scanAndSetupChatTimelines();
             }
         }, 600);
     }

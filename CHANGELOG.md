@@ -2,6 +2,27 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.30] - 2026-10-12
+
+### Fixed
+- **Khắc phục lỗi thiếu vạch mốc khi mở phiên chat cũ:** Bổ sung cơ chế phát hiện số lượng turn qua thuộc tính trợ năng `aria-setsize` và chỉ số `data-index`. Tự động hiển thị đầy đủ 100% các vạch mốc ngay khi mở chat mà không cần cuộn ngược lên trên.
+- **Bộ nhớ đệm phiên thông minh (Session Cache):** Tự động ghi nhớ và phục hồi tiêu đề, thời gian và trích dẫn câu hỏi của toàn bộ các lượt chat qua bộ nhớ đệm `window.__jarvisSessionCache`.
+- **Cơ chế tải bù tự động khi chuyển lượt (Snap Back-fill):** Khi bấm vào vạch mốc chưa tải trong DOM, hệ thống tự động cuộn đến vị trí tương ứng và nạp dữ liệu chi tiết vào thẻ xem trước.
+
+## [1.1.29] - 2026-10-12
+
+### Improved
+- **Tinh chỉnh Chat Timeline Minimap chuẩn phong cách Codex:** Gỡ bỏ khối viewport xám thô, thay thế bằng thanh track mảnh 1px và vạch chỉ báo gradient tím neon thanh lịch.
+- **Tối ưu khoảng cách vạch mốc:** Gom nhóm và phân bố khoảng cách tự nhiên (18px-30px) khi ít turn, loại bỏ hoàn toàn khoảng cách trống quá xa giữa các lượt hỏi.
+- **Nâng cấp thẻ Hover Preview Card Glassmorphism:** Tích hợp icon bookmark SVG, tiêu đề prompt 2 dòng, tự động trích xuất 1-2 dòng đầu câu trả lời của AI và vùng cảm ứng rê chuột mở rộng.
+
+## [1.1.28] - 2026-10-12
+
+### Added
+- **Thanh điều hướng Chat Timeline Minimap phong cách Codex:** Bổ sung thanh ray điều hướng trực quan nằm ở góc phải màn hình chat, cho phép bao quát nhanh toàn bộ các lượt trò chuyện và chuyển đổi nhanh giữa các câu hỏi.
+- **Thẻ xem trước Glassmorphism Hover Preview Card:** Hiển thị thẻ tóm tắt nội dung khi rê chuột vào từng vạch mốc trên thanh điều hướng, tự động thích ứng màu sắc theo Theme hiện tại của trình soạn thảo.
+- **Cơ chế cuộn mượt thông minh hỗ trợ danh sách ảo hóa:** Tự động điều hướng và cuộn mượt chính xác đến đúng câu hỏi được chọn kể cả trong các cuộc trò chuyện dài.
+
 ## [1.1.27] - 2026-10-12
 
 ### Added
