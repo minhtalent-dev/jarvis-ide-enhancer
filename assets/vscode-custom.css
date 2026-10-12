@@ -150,16 +150,20 @@
 
 /* ==========================================================================
    Triệt tiêu viền khung output khi terminal không có stdout
+   Bảo toàn hiển thị 100% cho terminal có nội dung (không dùng :has bao quát)
    ========================================================================== */
 .chat-terminal-output-container.chat-terminal-output-container-no-output,
-.chat-terminal-output-container:has(.chat-terminal-output-terminal-no-output),
-.chat-terminal-output-container:has(.chat-terminal-output-empty) {
+.chat-terminal-output-terminal.chat-terminal-output-terminal-no-output {
     display: none !important;
     height: 0 !important;
     min-height: 0 !important;
     border: none !important;
     padding: 0 !important;
     margin: 0 !important;
+}
+
+.chat-terminal-output-empty {
+    display: none !important;
 }
 
 /* Triệt tiêu style code pill trong user request & queued box */

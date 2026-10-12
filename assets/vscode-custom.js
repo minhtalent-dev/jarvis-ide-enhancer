@@ -746,6 +746,7 @@
 
     /**
      * Triệt tiêu viền khung output khi terminal không có stdout
+     * Tuyệt đối bảo toàn hiển thị khi terminal có output thực tế
      */
     function evaluateEmptyToolElements(rootNode) {
         if (!rootNode || typeof document === 'undefined') return;
@@ -757,25 +758,43 @@
         }
 
         for (const el of targets) {
-            if (el.querySelector && el.querySelector('.codicon-loading, [class*="progress"]')) continue;
-
-            const hasNoOutputChild = el.querySelector && el.querySelector('.chat-terminal-output-terminal-no-output, .chat-terminal-output-empty');
-            if (hasNoOutputChild) {
-                el.classList.add('chat-terminal-output-container-no-output');
+            // 1. Nếu terminal đang chạy hoặc có loading indicator -> giữ nguyên
+            if (el.querySelector && el.querySelector('.codicon-loading, [class*="progress"], .chat-terminal-running-spinner')) {
+                el.classList.remove('chat-terminal-output-container-no-output');
                 continue;
             }
 
+            // 2. Kiểm tra xem có output thực tế không:
+            // Xterm.js render lên canvas; hoặc có xterm-rows, pre, code, command-output
+            const hasCanvasOrRows = el.querySelector && el.querySelector(
+                '.xterm canvas, .xterm-screen canvas, .xterm-rows span, pre code, .chat-terminal-command-output'
+            );
+            if (hasCanvasOrRows) {
+                el.classList.remove('chat-terminal-output-container-no-output');
+                continue;
+            }
+
+            // 3. Kiểm tra xem có text thực tế trong terminal buffer không
             const outputEl = el.querySelector ? el.querySelector(
-                '.chat-terminal-output-terminal, .chat-terminal-output-content, .xterm-rows, pre, .terminal-widget'
+                '.chat-terminal-output-terminal, .chat-terminal-output-content, pre'
             ) : null;
+            if (outputEl) {
+                const text = (outputEl.textContent || '')
+                    .replace(/\u001b(?:\[[0-9;?]*[a-zA-Z]|\][^\u0007\u001b]*(?:\u0007|\u001b\\)?)/g, '')
+                    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                    .trim();
+                if (text !== '' && text !== 'No output was produced by the command.') {
+                    el.classList.remove('chat-terminal-output-container-no-output');
+                    continue;
+                }
+            }
 
-            const raw = outputEl ? (outputEl.textContent || '') : (el.textContent || '');
-            const cleanText = raw
-                .replace(/\u001b(?:\[[0-9;?]*[a-zA-Z]|\][^\u0007\u001b]*(?:\u0007|\u001b\\)?)/g, '')
-                .replace(/[\u200B-\u200D\uFEFF]/g, '')
-                .trim();
+            // 4. Chỉ khi VS Code core xác nhận no-output HOẶC thông báo empty có nội dung rõ ràng
+            const emptyEl = el.querySelector ? el.querySelector('.chat-terminal-output-empty') : null;
+            const emptyText = emptyEl ? (emptyEl.textContent || '').trim() : '';
+            const isCoreNoOutput = el.querySelector && el.querySelector('.chat-terminal-output-terminal-no-output');
 
-            if (cleanText === '' || cleanText === 'No output was produced by the command.') {
+            if (emptyText === 'No output was produced by the command.' || (isCoreNoOutput && !hasCanvasOrRows)) {
                 el.classList.add('chat-terminal-output-container-no-output');
             } else {
                 el.classList.remove('chat-terminal-output-container-no-output');
