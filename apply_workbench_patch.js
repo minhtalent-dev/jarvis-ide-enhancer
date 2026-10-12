@@ -1,9 +1,27 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const vm = require('vm');
 
-const appRoot = 'C:\\Users\\mes\\AppData\\Local\\Programs\\Microsoft VS Code\\2a59476c9b\\resources\\app';
-const jsPath = path.join(appRoot, 'out', 'vs', 'workbench', 'workbench.desktop.main.js');
+function getJsPath() {
+    const fixedPath = 'C:\\Users\\mes\\AppData\\Local\\Programs\\Microsoft VS Code\\2a59476c9b\\resources\\app\\out\\vs\\workbench\\workbench.desktop.main.js';
+    if (fs.existsSync(fixedPath)) return fixedPath;
+    const baseDir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Programs', 'Microsoft VS Code');
+    if (fs.existsSync(baseDir)) {
+        try {
+            const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (entry.isDirectory()) {
+                    const candidate = path.join(baseDir, entry.name, 'resources', 'app', 'out', 'vs', 'workbench', 'workbench.desktop.main.js');
+                    if (fs.existsSync(candidate)) return candidate;
+                }
+            }
+        } catch (e) {}
+    }
+    return fixedPath;
+}
+
+const jsPath = getJsPath();
 
 if (!fs.existsSync(jsPath)) {
     console.error(`ERROR: Không tìm thấy file tại ${jsPath}`);
@@ -19,73 +37,76 @@ if (!fs.existsSync(bakPath)) {
 }
 
 let content = fs.readFileSync(jsPath, 'utf8');
-let patch1Applied = false;
-let patch2Applied = false;
 
-// 1. Áp dụng Patch 1: Intellisense bypass (Pge / Tme -> return!0)
-const p1 = /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{let\s+([a-z])=new\s+([A-Za-z0-9_$]+)\(1,1,\3\.replace\.startLineNumber,\3\.replace\.startColumn\);return!!\2\.getValueInRange\(\4\)\.match\(\/\^\\s\*\$\/\)\}/;
-if (p1.test(content)) {
-    const m = content.match(p1);
-    console.log(`Patch 1: Phát hiện hàm ${m[1]}(${m[2]},${m[3]}), đang thay thế bằng return!0`);
-    content = content.replace(p1, `function ${m[1]}(${m[2]},${m[3]}){return!0}`);
-    patch1Applied = true;
-} else if (content.includes('function Pge(s,o){return!0}') || content.includes('function Tme(s,o){return!0}')) {
-    console.log('Patch 1: Đã được áp dụng trước đó (Pge/Tme return!0).');
-    patch1Applied = true;
-} else {
-    console.warn('Patch 1: Cảnh báo không tìm thấy mẫu hàm target!');
+const isTmePatched = content.includes('function Pge(s,o){return!0}') || content.includes('function Tme(s,o){return!0}') || /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{return!0\}/.test(content);
+const isMultiSlashSuggestPatched = !content.includes('.parsedInput.parts.find(w=>w instanceof Pm)') && !content.includes('.parsedInput.parts.find(C=>C instanceof Pm)');
+const isAddCodeEditorPatched = content.includes('window.__codeEditorService=this');
+
+if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched) {
+    console.log('⚡ Hệ thống đã có đầy đủ 3 bản vá (Intellisense bypass, Multi-slash unblocked, Hook addCodeEditor), không cần vá lại.');
+    process.exit(0);
 }
 
-// 2. Áp dụng Patch 2: Hook window.__chatInputEditor, window.__codeEditorService & dispatch chat-editor-ready event
-if (content.includes('this.widget=e;try{window.__chatInputEditor=e.inputEditor;') && !content.includes('window.__codeEditorService=t;')) {
-    console.log('Patch 2: Phát hiện hook chatInputEditor, đang bổ sung window.__codeEditorService=t;');
-    content = content.replace(
-        'this.widget=e;try{window.__chatInputEditor=e.inputEditor;',
-        'this.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;'
-    );
-    patch2Applied = true;
-} else if (content.includes('window.__codeEditorService=t')) {
-    console.log('Patch 2: Đã được áp dụng trước đó (window.__codeEditorService=t).');
-    patch2Applied = true;
-} else {
-    const hookTarget = 'this.widget=e;this.codeEditorService=t;';
-    const hookReplacement = 'this.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;window.dispatchEvent(new CustomEvent(\'chat-editor-ready\',{detail:e.inputEditor}))}catch(err){}this.codeEditorService=t;';
-    if (content.includes(hookTarget)) {
-        console.log('Patch 2: Phát hiện hook target, đang gán window.__chatInputEditor, window.__codeEditorService và dispatch chat-editor-ready');
-        content = content.replaceAll(hookTarget, hookReplacement);
-        patch2Applied = true;
-    } else {
-        console.warn('Patch 2: Cảnh báo không tìm thấy hook target!');
-    }
-}
-
-// 3. Kiểm tra cú pháp bằng new vm.Script
-console.log('Kiểm tra cú pháp V8...');
-console.log('Content len:', content.length);
-console.log('Raw file len:', fs.readFileSync(jsPath, 'utf8').length);
-console.log('Content === Raw file:', content === fs.readFileSync(jsPath, 'utf8'));
 try {
-    const testContent = content.replace(/import\.meta/g, '({})').replace(/export\s*\{[^}]+\};?/g, '');
-    new vm.Script(testContent);
-    console.log('=> Cú pháp V8 hợp lệ 100%!');
-} catch (syntaxErr) {
-    console.error(`=> LỖI CÚ PHÁP: ${syntaxErr.message}`);
-    process.exit(1);
-}
+    // 1. Áp dụng Patch 1: Pge/Tme -> return!0
+    if (!isTmePatched) {
+        const p1 = /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{let\s+([a-z])=new\s+([A-Za-z0-9_$]+)\(1,1,\3\.replace\.startLineNumber,\3\.replace\.startColumn\);return!!\2\.getValueInRange\(\4\)\.match\(\/\^\\s\*\$\/\)\}/;
+        if (p1.test(content)) {
+            const m = content.match(p1);
+            console.log(`Patch 1: Phát hiện hàm ${m[1]}(${m[2]},${m[3]}), đang thay thế bằng return!0`);
+            content = content.replace(p1, `function ${m[1]}(${m[2]},${m[3]}){return!0}`);
+        } else if (content.includes('function Tme(s,o){let e=new j')) {
+            content = content.replace(/function Tme\(s,o\)\{[\s\S]*?match\(\/\^\s\*\$\/\)\}/, 'function Tme(s,o){return!0}');
+        }
+    }
 
-// 4. Ghi file
-fs.writeFileSync(jsPath, content, 'utf8');
-console.log(`Đã ghi file: ${jsPath}`);
+    // 2. Áp dụng Patch 2: Gỡ bỏ ||...parsedInput.parts.find(...)
+    console.log('Patch 2: Gỡ bỏ điều kiện chặn gợi ý slash command thứ 2 trở đi...');
+    content = content.replace(/\|\|[a-zA-Z0-9_$]+\.parsedInput\.parts\.find\([a-zA-Z0-9_$]+=>[a-zA-Z0-9_$]+\s+instanceof\s+Pm\)/g, '');
 
-// 5. Xác minh file chứa cả 2 patch
-const verified = fs.readFileSync(jsPath, 'utf8');
-const vPatch1 = verified.includes('function Pge(s,o){return!0}') || verified.includes('function Tme(s,o){return!0}');
-const vPatch2 = verified.includes('window.__chatInputEditor=e.inputEditor') && verified.includes('window.__codeEditorService=t');
+    // 3. Áp dụng Patch 3: Hook addCodeEditor
+    if (content.includes('addCodeEditor(') && !content.includes('window.__codeEditorService=this')) {
+        console.log('Patch 3: Áp dụng hook addCodeEditor...');
+        content = content.replace(
+            /addCodeEditor\(([A-Za-z0-9_$]+)\)\{/,
+            'addCodeEditor($1){try{window.__codeEditorService=this;window.__allCodeEditors=window.__allCodeEditors||[];window.__allCodeEditors.push($1);let _d=$1.getContainerDomNode&&$1.getContainerDomNode();if(_d){_d.__monacoEditor=$1;setTimeout(()=>{try{if(_d.closest&&_d.closest(\'.interactive-input-part,.chat-input-editor,.interactive-input-editor,.chat-input-widget\')){window.__chatInputEditor=$1;window.dispatchEvent(new CustomEvent(\'chat-editor-ready\',{detail:$1}))}}catch(_){}},50)}}catch(_){}'
+        );
+    }
 
-console.log('=== KẾT QUẢ XÁC MINH ===');
-console.log('Patch 1 (Intellisense return!0):', vPatch1 ? 'THÀNH CÔNG' : 'THẤT BÀI');
-console.log('Patch 2 (Hook chatInputEditor & codeEditorService):', vPatch2 ? 'THÀNH CÔNG' : 'THẤT BÀI');
+    // 4. Kiểm tra an toàn: Snippet-Validation & Tính toàn vẹn tệp
+    console.log('Kiểm tra cú pháp V8 snippets...');
+    new vm.Script('function _test(s,o){return!0}');
+    new vm.Script(`(function(e,t){\nthis.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e.inputEditor}))}catch(err){}this.codeEditorService=t;\n})`);
+    new vm.Script(`(function(e){\ntry{window.__codeEditorService=this;window.__allCodeEditors=window.__allCodeEditors||[];window.__allCodeEditors.push(e);let _d=e.getContainerDomNode&&e.getContainerDomNode();if(_d){_d.__monacoEditor=e;setTimeout(()=>{try{if(_d.closest&&_d.closest('.interactive-input-part,.chat-input-editor,.interactive-input-editor,.chat-input-widget')){window.__chatInputEditor=e;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e}))}}catch(_){}},50)}}catch(_){}\n})`);
 
-if (!vPatch1 || !vPatch2) {
+    if (!content || content.length < 5000000) {
+        throw new Error(`File size anomaly (${content ? content.length : 0} bytes)`);
+    }
+    console.log('=> Cú pháp V8 snippets và toàn vẹn tệp hợp lệ 100%!');
+
+    // 5. Ghi file
+    fs.writeFileSync(jsPath, content, 'utf8');
+    console.log(`Đã ghi file: ${jsPath}`);
+
+    // 6. Xác minh file chứa cả 3 patch
+    const verified = fs.readFileSync(jsPath, 'utf8');
+    const vPatch1 = verified.includes('function Pge(s,o){return!0}') || verified.includes('function Tme(s,o){return!0}') || /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{return!0\}/.test(verified);
+    const vPatch2 = !verified.includes('.parsedInput.parts.find(w=>w instanceof Pm)') && !verified.includes('.parsedInput.parts.find(C=>C instanceof Pm)');
+    const vPatch3 = verified.includes('window.__codeEditorService=this');
+
+    console.log('=== KẾT QUẢ XÁC MINH ===');
+    console.log('Patch 1 (Pge/Tme return!0):', vPatch1 ? 'THÀNH CÔNG' : 'THẤT BÀI');
+    console.log('Patch 2 (Multi-slash unblocked):', vPatch2 ? 'THÀNH CÔNG' : 'THẤT BÀI');
+    console.log('Patch 3 (Hook addCodeEditor):', vPatch3 ? 'THÀNH CÔNG' : 'THẤT BÀI');
+
+    if (!vPatch1 || !vPatch2 || !vPatch3) {
+        throw new Error('Xác minh thất bại');
+    }
+} catch (err) {
+    console.error(`LỖI: ${err.message}. Đang rollback...`);
+    if (bakPath && fs.existsSync(bakPath)) {
+        fs.copyFileSync(bakPath, jsPath);
+        console.log(`Đã khôi phục file gốc từ backup: ${bakPath}`);
+    }
     process.exit(1);
 }

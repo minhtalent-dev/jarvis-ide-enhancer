@@ -2,6 +2,82 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.27] - 2026-10-12
+
+### Added
+- **Gợi ý tự động thông minh cho Slash Command & Macro:** Bổ sung cửa sổ gợi ý nổi thông minh hỗ trợ cả lệnh gạch chéo (`/`) và macro (``` ` ```), tự động nhận diện toàn bộ danh mục kỹ năng và lệnh quy trình làm việc.
+- **Tự động quét kỹ năng quy trình:** Tích hợp bộ quét tự động danh mục quy trình làm việc và kỹ năng sẵn có trên máy để hiển thị đầy đủ trong bảng gợi ý chat.
+
+### Improved
+- **Trải nghiệm giao diện đồng bộ & an toàn:** Nâng cấp độ ổn định của hệ thống hiển thị huy hiệu lệnh, tối ưu hóa giao diện nổi hoạt động độc lập và mượt mà trên mọi thiết bị.
+
+## [1.1.26] - 2026-10-12
+
+### Fixed
+- **Multi-Slash Intellisense Unblocked:** Removed core gate `parsedInput.parts.find(instanceof Pm)` preventing completion suggestions for the 2nd, 3rd, and subsequent slash commands.
+- **Zero-Crash Universal Self-Healing Engine:** Fully automated, silent patching on extension activation with snippet-level V8 verification and automatic `.bak` rollback on any failure.
+
+## [1.1.25] - 2026-10-12
+
+### Fixed
+- **Unblocked Subsequent Slash Commands Intellisense:** Removed core parser restriction (`parsedInput.parts.find(instanceof Pm)`) that blocked intellisense completion suggestions for the 2nd, 3rd, and subsequent slash commands in multi-command prompts.
+
+## [1.1.24] - 2026-10-12
+
+### Fixed
+- **Permanent Fix for Black Screen Risk:** Completely eliminated dangerous regex overrides on `setDecorationsByType` that caused V8 syntax errors (`SyntaxError: Unexpected identifier '_m'`).
+- **Unified 3-Tier Multi-Channel Editor Attachment:** Expanded fallback DOM selectors for `.chat-input-container` and `[class*="interactive-input"]`, ensuring autocomplete popup and purple pill decorations attach reliably on both desktop and laptop environments.
+- **Isolated Snippet Validation:** Core patching now strictly validates isolated snippets via `vm.Script` before writing, preventing false positives and black screen lockups.
+
+## [1.1.23] - 2026-10-11
+
+### Added
+- **Pure PowerShell Core Patcher (`patch_core.ps1`):** Standalone zero-dependency PowerShell patch script for environments without global Node.js on system PATH.
+- **Direct 1-Liner PowerShell Patch:** Single-command offline core bundle patcher for instant terminal recovery.
+
+## [1.1.22] - 2026-10-11
+
+### Fixed
+- **Multi-Channel Chat Input Bridge:** Added 3-tier fallback editor discovery (`window.__chatInputEditor`, `window.__allCodeEditors`, and DOM `.__monacoEditor` query) ensuring autocomplete and pill decorations attach immediately across all client environments and profiles.
+- **Invariant `addCodeEditor` Lifecycle Hook:** Exposes `window.__codeEditorService=this` and delayed container resolution (`setTimeout`) to resolve input editors created in memory before DOM mounting.
+
+## [1.1.21] - 2026-10-11
+
+### Fixed
+- **Restored Terminal Tool Cards:** Fixed overly aggressive CSS and DOM parent-level suppression that accidentally caused running and completed terminal command cards to disappear from the chat response view.
+
+## [1.1.20] - 2026-10-11
+
+### Fixed
+- **Auto-Closing Quote Resilience:** Fixed macro token recognition and purple pill highlighting when typing macros with VS Code's automatic quote closing (e.g. `` `fp` ``).
+- **Universal `addCodeEditor` Hook:** Replaced brittle constructor pattern with invariant `addCodeEditor` service hook, guaranteeing 100% editor attachment across all VS Code ESM releases.
+- **Native Multi-Slash Command Decoration:** Injected native multi-slash decorations directly into core bundle for complete secondary command highlighting.
+
+## [1.1.19] - 2026-10-11
+
+### Fixed
+- **Bulletproof Snippet-Level V8 Validation:** Replaced full-bundle classic script parsing with isolated snippet-level V8 compilation and file integrity bounds. Completely eliminates false-positive `Unexpected token 'export'` and `Unexpected token '{'` errors on all modern VS Code ESM builds (such as build `110a328ea5`).
+
+## [1.1.18] - 2026-10-11
+
+### Fixed
+- **ESM-Compatible V8 Syntax Validation:** Fixed `Unexpected token 'export'` error during core bundle patching on modern VS Code ESM releases (such as build `110a328ea5`), unblocking Self-Healing daemon and Monaco Chat Input hooks across diverse client machines.
+
+## [1.1.17] - 2026-10-11
+
+### Added
+- **Seamless Cloud Vault Sync via GitHub Settings Sync:** Encrypted AES-256-GCM customizations payload (`jarvisEnhancer.cloudVaultPayload`) is automatically synchronized across devices using native VS Code GitHub Settings Sync without manual file transfers.
+- **Auto-Detection on New Machines:** Extension automatically detects new vault payloads on startup and prompts for master passphrase to restore the complete environment in one click.
+- **New Commands:**
+  - `JARVIS: Push Agent Customizations to Cloud (Settings Sync)` (`jarvisEnhancer.pushCloudVault`)
+  - `JARVIS: Pull & Restore Agent Customizations from Cloud` (`jarvisEnhancer.pullCloudVault`)
+
+## [1.1.16] - 2026-10-11
+
+### Fixed
+- **Cleaned Command Palette Titles:** Removed redundant `"JARVIS: "` prefix from command titles in `package.json`, eliminating the duplicate `"JARVIS: JARVIS:"` display in Command Palette.
+- **Full Profile-Aware Extension Deployment:** Ensured all 8 extension commands (including Vault Export/Import) are correctly deployed to custom active profiles.
+
 ## [1.1.15] - 2026-10-11
 
 ### Fixed

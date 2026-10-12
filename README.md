@@ -4,7 +4,7 @@
 
 **Bespoke Luxury Visuals & Intelligent Prompt Engineering for VS Code**
 
-[![Version](https://img.shields.io/badge/version-v1.1.15-89b4fa.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.1.27-89b4fa.svg)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-89dceb.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/vscode-%5E1.85.0-74c7ec.svg)](https://code.visualstudio.com/)
 [![Architecture](https://img.shields.io/badge/architecture-Zero--Crash-a6e3a1.svg)](#-zero-crash-architecture)
@@ -53,11 +53,12 @@ Craft an elite, high-performance workspace for Founders & Developers: 3D Isometr
 
 ---
 
-### 4. Interactive Backtick Macro Autocomplete Popup
+### 4. Interactive Floating Autocomplete (Slash `/` & Macro `` ` ``)
 
-- **Floating Suggestion Widget:** As soon as you type a backtick (`` ` ``) followed by prefix characters (e.g., `` `fp ``, `` `tt ``, `` `rcm ``) in the Chat Input editor, an interactive suggestion popup appears directly above the cursor.
-- **Keyboard Navigation & Instant Insertion:** Seamlessly navigate suggestions via `ArrowUp` and `ArrowDown`, accept with `Enter` or `Tab`, and dismiss with `Escape`. Selected macros insert atomic tokens instantly with exact trailing space.
-- **Rich Macro Metadata:** Displays macro key, human-readable labels, and full descriptions for all 20+ founder macro commands.
+- **Universal Floating Suggestion Widget:** Typing either a slash (`/`) or backtick (`` ` ``) in the Chat Input editor triggers an instant glassmorphism floating autocomplete popup right at your cursor.
+- **Dynamic Skill & Macro Registry:** Automatically discovers and categorizes all 36+ skills and workflows (`.agents/skills`, `.copilot/skills`, `.claude/skills`), built-in slash commands, and founder macro abbreviations with rich descriptions.
+- **Keyboard Navigation & Instant Insertion:** Seamlessly navigate suggestions via `ArrowUp` and `ArrowDown`, accept with `Enter` or `Tab`, and dismiss with `Escape`. Selected tokens insert cleanly with trailing space, ready for chaining.
+- **Zero-Crash Client Architecture:** 100% pure client-side popup running smoothly without requiring risky modifications to VS Code's core bundle.
 
 ---
 
@@ -122,6 +123,14 @@ Craft an elite, high-performance workspace for Founders & Developers: 3D Isometr
 
 ---
 
+### 12. GitHub Cloud Settings Sync Integration
+
+- **Zero-File Cloud Synchronization:** Encrypts and compresses all agent customizations into an armored AES-256-GCM payload stored directly within VS Code application configuration (`jarvisEnhancer.cloudVaultPayload`), syncing silently across machines through native GitHub Settings Sync.
+- **Auto-Detection on Target Devices:** Extension observes incoming cloud payloads upon VS Code startup, notifying the user and offering one-click interactive restoration with master passphrase verification.
+- **End-to-End Key Security:** Passphrases are never synced or cached; decryption occurs entirely in-memory on the target machine with cross-platform path adaptation.
+
+---
+
 ## 🛠️ Setup & Usage
 
 ### Prerequisites
@@ -141,6 +150,18 @@ Install the official stylesheet loader: [Custom CSS and JS Loader](https://marke
 4. **Reload Window:**
    - Click `Reload Window` when prompted to enjoy your upgraded workspace.
 
+### Pure PowerShell Offline Patch (Zero-Node.js)
+
+For environments without global Node.js on system `PATH` or for instant terminal recovery:
+
+```powershell
+# Chạy script độc lập
+powershell -ExecutionPolicy Bypass -File .\patch_core.ps1
+
+# Hoặc chạy lệnh trực tiếp 1-dòng (Direct 1-Liner)
+$f = (Get-ChildItem -Path ([Environment]::GetFolderPath('LocalApplicationData') + '\Programs\Microsoft VS Code') -Filter 'workbench.desktop.main.js' -Recurse | Where-Object { $_.FullName -notmatch '\.bak$' } | Select-Object -First 1).FullName; powershell -ExecutionPolicy Bypass -File .\patch_core.ps1
+```
+
 ---
 
 ## ⌨️ Available Commands
@@ -155,6 +176,8 @@ Install the official stylesheet loader: [Custom CSS and JS Loader](https://marke
 | `JARVIS: Run Self-Healing & Verify Patches` | `jarvisEnhancer.runSelfHealing` | Inspects and automatically repairs workbench patches and styling injections if missing after VS Code updates. |
 | `JARVIS: Export Agent Customizations Vault` | `jarvisEnhancer.exportVault` | Bundles and exports MCP servers, skills, prompts, models, and styles into an encrypted vault or sanitized template. |
 | `JARVIS: Import Agent Customizations Vault` | `jarvisEnhancer.importVault` | Restores agent customizations from a `.jarvis-vault` package or template, auto-rehydrating paths and secrets. |
+| `JARVIS: Push Agent Customizations to Cloud (Settings Sync)` | `jarvisEnhancer.pushCloudVault` | Encrypts complete agent customizations and publishes payload to GitHub Settings Sync for seamless multi-device replication. |
+| `JARVIS: Pull & Restore Agent Customizations from Cloud` | `jarvisEnhancer.pullCloudVault` | Pulls synchronized vault payload from cloud settings, prompts for passphrase, and restores environment. |
 
 ---
 

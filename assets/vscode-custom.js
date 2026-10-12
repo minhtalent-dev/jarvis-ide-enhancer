@@ -11,25 +11,33 @@
     function findBacktickMacroTokens(text) {
         if (!text || typeof text !== 'string') return [];
 
+        const activeMacros = getActiveMacros();
+        const knownMacroTokens = new Set(activeMacros.map((m) => m.token.toLowerCase()));
+
         const inlineCodeRanges = [];
         const inlineCodeRe = /(?:^|[^\\])`([^`\r\n]+)`(?=[\s.,;:!?)\]\r\n]|$)/gu;
         let m;
         while ((m = inlineCodeRe.exec(text)) !== null) {
             const fullMatch = m[0];
-            const prefixLen = fullMatch.length - m[1].length - 2;
+            const codeContent = m[1];
+            if (knownMacroTokens.has(('`' + codeContent).toLowerCase())) {
+                continue;
+            }
+            const prefixLen = fullMatch.length - codeContent.length - 2;
             const codeStart = m.index + prefixLen;
-            const codeEnd = codeStart + m[1].length + 2;
+            const codeEnd = codeStart + codeContent.length + 2;
             inlineCodeRanges.push([codeStart, codeEnd]);
         }
 
         const tokens = [];
-        const macroRe = /(?:^|[\s>:,;])(`[\p{L}0-9_.:-]+)(?=[\s>:,;.?!)\]]|$)/gu;
+        const macroRe = /(?:^|[\s>:,;])(`[\p{L}0-9_.:-]+)(?:`|(?=[\s>:,;.?!)\]]|$))/gu;
         let mb;
         while ((mb = macroRe.exec(text)) !== null) {
             const fullMatch = mb[0];
             const rawToken = mb[1];
             const tokenStart = mb.index + fullMatch.lastIndexOf(rawToken);
-            const tokenEnd = tokenStart + rawToken.length;
+            const hasTrailingBacktick = fullMatch.endsWith('`');
+            const tokenEnd = tokenStart + rawToken.length + (hasTrailingBacktick ? 1 : 0);
 
             const insideInline = inlineCodeRanges.some(([start, end]) => tokenStart < end && tokenEnd > start);
 
@@ -39,7 +47,7 @@
                     start: tokenStart,
                     end: tokenEnd,
                     index: tokenStart,
-                    length: rawToken.length
+                    length: tokenEnd - tokenStart
                 });
             }
         }
@@ -73,12 +81,47 @@
         { token: '`vrf', desc: 'Verify yêu cầu/kết quả thực thi có bằng chứng' }
     ];
 
+    /**
+     * Slash Commands & Skills Registry - 36 skills + system commands
+     */
+    const JARVIS_DEFAULT_SLASH_COMMANDS = [
+        { token: '/33-new-task', desc: 'Tạo hoặc cập nhật task plan production-grade 11 sections' },
+        { token: '/01-create-plan', desc: 'Lập kế hoạch triển khai chi tiết' },
+        { token: '/02-critic', desc: 'Đánh giá, phản biện và thẩm định rủi ro' },
+        { token: '/03-planner-refine', desc: 'Tinh chỉnh và bổ sung kế hoạch' },
+        { token: '/04-do-plan', desc: 'Thực thi các task theo kế hoạch đã duyệt' },
+        { token: '/05-validate', desc: 'Kiểm tra và nghiệm thu kết quả' },
+        { token: '/06-debug', desc: 'Điều tra và xử lý lỗi hệ thống' },
+        { token: '/07-ui-fix', desc: 'Sửa lỗi giao diện và trải nghiệm người dùng' },
+        { token: '/08-project-index', desc: 'Đánh chỉ mục toàn bộ dự án' },
+        { token: '/09-function-index', desc: 'Đánh chỉ mục chi tiết các hàm' },
+        { token: '/10-new-feature', desc: 'Phát triển tính năng mới' },
+        { token: '/11-save-brain', desc: 'Lưu tri thức và ghi nhận CHANGELOG/README' },
+        { token: '/12-design-ui-ux', desc: 'Thiết kế giao diện người dùng hiện đại' },
+        { token: '/17-auto-plan', desc: 'Lập kế hoạch tự động toàn diện' },
+        { token: '/18-auto-execute', desc: 'Thực thi tự động tuân thủ 100% plan' },
+        { token: '/20-call-mcp', desc: 'Gọi công cụ MCP Server' },
+        { token: '/34-auto-screenshot-dotnet', desc: 'Tự động chụp ảnh tài liệu giao diện' },
+        { token: '/ccs-delegation', desc: 'Ủy quyền task cho CCS CLI profile' },
+        { token: '/find-skills', desc: 'Tìm kiếm và khám phá các skills mới' },
+        { token: '/clear', desc: 'Xóa ngữ cảnh hội thoại hiện tại' },
+        { token: '/help', desc: 'Trợ giúp về Copilot và các lệnh' }
+    ];
+
     function getActiveMacros() {
         const dynamicMacros = window.__jarvisDynamicMacros || window.__jarvisCustomMacros;
         if (Array.isArray(dynamicMacros) && dynamicMacros.length > 0) {
             return dynamicMacros;
         }
         return JARVIS_DEFAULT_MACROS;
+    }
+
+    function getActiveSlashCommands() {
+        const dynamicCommands = window.__jarvisSlashCommands;
+        if (Array.isArray(dynamicCommands) && dynamicCommands.length > 0) {
+            return dynamicCommands;
+        }
+        return JARVIS_DEFAULT_SLASH_COMMANDS;
     }
 
     let _macroPopupEl = null;
@@ -99,6 +142,13 @@
                     // Giữ focus trên Monaco editor khi click vào popup
                     e.preventDefault();
                 });
+                document.addEventListener('pointerdown', (e) => {
+                    if (_macroPopupEl && _macroPopupEl.classList.contains('active')) {
+                        if (!_macroPopupEl.contains(e.target)) {
+                            hideMacroPopup();
+                        }
+                    }
+                }, true);
                 document.body.appendChild(_macroPopupEl);
             }
         }
@@ -124,7 +174,14 @@
         if (!macro || !_currentReplaceRange || !_activeEditorForMacro) return;
         try {
             const targetEditor = _activeEditorForMacro;
-            const range = _currentReplaceRange;
+            const range = { ..._currentReplaceRange };
+            const model = typeof targetEditor.getModel === 'function' ? targetEditor.getModel() : null;
+            if (model && macro.token.startsWith('`')) {
+                const lineContent = model.getLineContent(range.endLineNumber) || '';
+                if (lineContent.charAt(range.endColumn - 1) === '`') {
+                    range.endColumn = range.endColumn + 1;
+                }
+            }
             const insertText = macro.token + ' ';
             targetEditor.executeEdits('jarvis-macro', [{
                 range: range,
@@ -170,7 +227,7 @@
             itemEl.className = 'jarvis-macro-item' + (idx === selectedIdx ? ' selected' : '');
 
             const tokenSpan = document.createElement('span');
-            tokenSpan.className = 'jarvis-macro-token';
+            tokenSpan.className = m.token.startsWith('/') ? 'jarvis-slash-token' : 'jarvis-macro-token';
             tokenSpan.textContent = m.token;
 
             const descSpan = document.createElement('span');
@@ -261,7 +318,7 @@
 
                 const lineContent = model.getLineContent(pos.lineNumber);
                 const textBeforeCursor = lineContent.substring(0, pos.column - 1);
-                const match = /(?:^|[\s>:,;])(`[\p{L}0-9_.:-]*)$/u.exec(textBeforeCursor);
+                const match = /(?:^|[\s>:,;])([`/][\p{L}0-9_.:-]*)$/u.exec(textBeforeCursor);
 
                 if (!match) {
                     if (_activeEditorForMacro === editor) hideMacroPopup();
@@ -274,7 +331,12 @@
                 const startCol = (pos.column - 1) - (fullMatch.length - tokenStartInFullMatch) + 1;
 
                 const prefix = rawToken.toLowerCase();
-                const matched = getActiveMacros().filter((m) => m.token.toLowerCase().startsWith(prefix));
+                let matched = [];
+                if (rawToken.startsWith('/')) {
+                    matched = getActiveSlashCommands().filter((m) => m.token.toLowerCase().startsWith(prefix));
+                } else {
+                    matched = getActiveMacros().filter((m) => m.token.toLowerCase().startsWith(prefix));
+                }
 
                 if (matched.length === 0) {
                     if (_activeEditorForMacro === editor) hideMacroPopup();
@@ -447,6 +509,40 @@
         setTimeout(update, 800);
     }
 
+    function findAndAttachChatEditor() {
+        if (typeof document === 'undefined') return;
+
+        // Kênh 1: window.__chatInputEditor
+        if (window.__chatInputEditor && !window.__chatInputEditor.__slashPillAttached) {
+            attachChatPillDecorations(window.__chatInputEditor);
+            return;
+        }
+
+        // Kênh 2: window.__allCodeEditors
+        if (window.__allCodeEditors && Array.isArray(window.__allCodeEditors)) {
+            for (const ed of window.__allCodeEditors) {
+                if (ed && !ed.__slashPillAttached) {
+                    const dom = ed.getContainerDomNode && ed.getContainerDomNode();
+                    if (dom && dom.closest && dom.closest('.interactive-input-part, .chat-input-editor, .interactive-input-editor, .chat-input-widget, .chat-input-container, [class*="interactive-input"], [class*="chat-input"]')) {
+                        window.__chatInputEditor = ed;
+                        attachChatPillDecorations(ed);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Kênh 3: Query trực tiếp DOM
+        const domEls = document.querySelectorAll('.interactive-input-editor .monaco-editor, .chat-input-editor .monaco-editor, .interactive-input-part .monaco-editor, .chat-input-widget .monaco-editor, .chat-input-container .monaco-editor, [class*="interactive-input"] .monaco-editor, [class*="chat-input"] .monaco-editor');
+        for (const el of domEls) {
+            if (el.__monacoEditor && !el.__monacoEditor.__slashPillAttached) {
+                window.__chatInputEditor = el.__monacoEditor;
+                attachChatPillDecorations(el.__monacoEditor);
+                return;
+            }
+        }
+    }
+
     let _editor = window.__chatInputEditor;
     if (_editor) attachChatPillDecorations(_editor);
 
@@ -463,13 +559,12 @@
     } catch (e) {}
 
     const timer = setInterval(() => {
-        if (window.__chatInputEditor && !window.__chatInputEditor.__slashPillAttached) {
-            attachChatPillDecorations(window.__chatInputEditor);
-        }
-    }, 300);
+        findAndAttachChatEditor();
+    }, 200);
 
     window.addEventListener('chat-editor-ready', (e) => {
         if (e.detail) attachChatPillDecorations(e.detail);
+        findAndAttachChatEditor();
     });
 
     /**
@@ -650,73 +745,40 @@
     }
 
     /**
-     * Triệt tiêu khung Terminal / Tool Invocation Rỗng trong Chat Response
+     * Triệt tiêu viền khung output khi terminal không có stdout
      */
     function evaluateEmptyToolElements(rootNode) {
         if (!rootNode || typeof document === 'undefined') return;
 
-        const selector = '.chat-tool-invocation-part, .chat-terminal-output-container, .chat-terminal-content-part, .interactive-result-code-block, .chat-output-code-block, .tool-output-part, .webview-output, [class*="terminal-output"], .chat-confirmation-widget, .chat-terminal-thinking-collapsible';
+        const selector = '.chat-terminal-output-container';
         const targets = rootNode.querySelectorAll ? Array.from(rootNode.querySelectorAll(selector)) : [];
         if (rootNode.matches && rootNode.matches(selector)) {
             targets.push(rootNode);
         }
 
         for (const el of targets) {
-            if ((el.dataset && el.dataset.empty === 'true') || el.getAttribute('data-empty') === 'true') continue;
             if (el.querySelector && el.querySelector('.codicon-loading, [class*="progress"]')) continue;
 
-            // 1. Nếu phần tử là .webview-output và không có children và không có text
-            if (el.classList && el.classList.contains('webview-output')) {
-                if (el.children.length === 0 && (!el.textContent || el.textContent.trim() === '')) {
-                    el.setAttribute('data-empty', 'true');
-                    if (el.parentElement) {
-                        el.parentElement.setAttribute('data-empty', 'true');
-                    }
-                    continue;
-                }
-            }
-
-            // 2. Nếu phần tử chứa .webview-output:empty
-            const emptyWebview = el.querySelector ? (el.querySelector('.webview-output:empty') || (() => {
-                const w = el.querySelector('.webview-output');
-                return (w && w.children.length === 0 && (!w.textContent || w.textContent.trim() === '')) ? w : null;
-            })()) : null;
-            if (emptyWebview) {
-                el.setAttribute('data-empty', 'true');
-                continue;
-            }
-
-            // 3. Nếu phần tử có class chat-terminal-output-container-no-output hoặc chứa .chat-terminal-output-terminal-no-output hoặc .chat-terminal-output-empty
-            const hasNoOutputClass = el.classList && el.classList.contains('chat-terminal-output-container-no-output');
             const hasNoOutputChild = el.querySelector && el.querySelector('.chat-terminal-output-terminal-no-output, .chat-terminal-output-empty');
-            if (hasNoOutputClass || hasNoOutputChild) {
-                el.setAttribute('data-empty', 'true');
-                const parentCollapsible = el.closest ? el.closest('.chat-terminal-content-part, .chat-terminal-thinking-collapsible') : null;
-                if (parentCollapsible) {
-                    parentCollapsible.setAttribute('data-empty', 'true');
-                }
+            if (hasNoOutputChild) {
+                el.classList.add('chat-terminal-output-container-no-output');
                 continue;
             }
 
-            // 4. Kiểm tra text: Bóc text từ output container (tránh lấy text của header title), lọc bỏ ANSI/OSC escape sequence và zero-width space
-            const outputEl = (el.querySelector && el.querySelector(
-                '.chat-terminal-output-terminal, .chat-terminal-output-content, .chat-tool-output, .xterm-rows, pre, .terminal-widget, .webview-output'
-            )) || (el.matches && el.matches('.chat-tool-invocation-part, .chat-terminal-thinking-collapsible') ? null : el);
+            const outputEl = el.querySelector ? el.querySelector(
+                '.chat-terminal-output-terminal, .chat-terminal-output-content, .xterm-rows, pre, .terminal-widget'
+            ) : null;
 
-            const raw = outputEl ? (outputEl.textContent || '') : '';
+            const raw = outputEl ? (outputEl.textContent || '') : (el.textContent || '');
             const cleanText = raw
                 .replace(/\u001b(?:\[[0-9;?]*[a-zA-Z]|\][^\u0007\u001b]*(?:\u0007|\u001b\\)?)/g, '')
                 .replace(/[\u200B-\u200D\uFEFF]/g, '')
                 .trim();
 
             if (cleanText === '' || cleanText === 'No output was produced by the command.') {
-                el.setAttribute('data-empty', 'true');
-                const parentContainer = el.closest ? el.closest(
-                    '.chat-terminal-output-container, .chat-terminal-content-part, .chat-terminal-thinking-collapsible, .interactive-result-code-block, .chat-output-code-block, .tool-output-part, .chat-tool-invocation-part'
-                ) : null;
-                if (parentContainer && parentContainer !== el) {
-                    parentContainer.setAttribute('data-empty', 'true');
-                }
+                el.classList.add('chat-terminal-output-container-no-output');
+            } else {
+                el.classList.remove('chat-terminal-output-container-no-output');
             }
         }
     }
@@ -744,13 +806,18 @@
                 historyObserver.observe(target, { childList: true, subtree: true });
                 scanAndDecorateHistory();
                 evaluateEmptyToolElements(document.body || target);
+                findAndAttachChatEditor();
             }
         };
 
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', startObserver);
+            document.addEventListener('DOMContentLoaded', () => {
+                startObserver();
+                findAndAttachChatEditor();
+            });
         } else {
             startObserver();
+            findAndAttachChatEditor();
         }
     }
 

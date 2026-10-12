@@ -149,45 +149,18 @@
 }
 
 /* ==========================================================================
-   Triệt tiêu triệt để mọi khung Terminal / Tool Invocation / Webview Output Rỗng
+   Triệt tiêu viền khung output khi terminal không có stdout
    ========================================================================== */
-[data-empty="true"],
-.webview-output[data-empty="true"],
-.interactive-result-code-block[data-empty="true"],
-.chat-output-code-block[data-empty="true"],
-.tool-output-part[data-empty="true"],
-.chat-terminal-output-container[data-empty="true"],
-.chat-terminal-content-part[data-empty="true"],
-.chat-tool-invocation-part[data-empty="true"],
-.chat-terminal-thinking-collapsible[data-empty="true"],
-.interactive-result-code-block:has(.webview-output:empty),
-.chat-output-code-block:has(.webview-output:empty),
-.tool-output-part:has(.webview-output:empty),
-.interactive-result-code-block:empty,
-.chat-output-code-block:empty,
-.tool-output-part:empty,
-.webview-output:empty,
-.chat-tool-invocation-part:not(:has(.codicon-loading)):has(.chat-tool-output:empty),
-.chat-terminal-output-container-no-output,
 .chat-terminal-output-container.chat-terminal-output-container-no-output,
 .chat-terminal-output-container:has(.chat-terminal-output-terminal-no-output),
-.chat-terminal-output-container:has(.chat-terminal-output-empty),
-.chat-terminal-output-container:has(.xterm-rows:empty),
-.chat-terminal-content-part:has(.chat-terminal-output-container-no-output):not(:has(.chat-terminal-output-content span)),
-.chat-terminal-thinking-collapsible:has(.chat-terminal-output-container-no-output):not(:has(.chat-terminal-output-content span)) {
+.chat-terminal-output-container:has(.chat-terminal-output-empty) {
     display: none !important;
     height: 0 !important;
     min-height: 0 !important;
-    max-height: 0 !important;
+    border: none !important;
     padding: 0 !important;
     margin: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-    outline: none !important;
-    overflow: hidden !important;
 }
-
-
 
 /* Triệt tiêu style code pill trong user request & queued box */
 .interactive-session .request .rendered-markdown code,
@@ -336,6 +309,17 @@ div[class*="request"] .rendered-markdown .custom-backtick-pill,
     font-family: inherit !important;
     background-color: rgba(168, 85, 247, 0.15) !important;
     border: 1px solid rgba(192, 132, 252, 0.4) !important;
+    border-radius: 3px !important;
+    padding: 1px 4px !important;
+    white-space: nowrap !important;
+}
+
+.jarvis-slash-token {
+    color: #89b4fa !important;
+    font-weight: 600 !important;
+    font-family: inherit !important;
+    background-color: var(--vscode-chat-slashCommandBackground, rgba(38, 71, 120, 0.4)) !important;
+    border: 1px solid rgba(137, 180, 250, 0.4) !important;
     border-radius: 3px !important;
     padding: 1px 4px !important;
     white-space: nowrap !important;

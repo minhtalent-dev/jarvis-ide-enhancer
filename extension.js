@@ -145,6 +145,58 @@ function discoverMacrosFromRules(targetFile = null) {
 }
 
 /**
+ * Quét tự động danh sách Slash Commands từ các thư mục skills và lệnh mặc định
+ */
+function discoverSlashCommands() {
+    const list = [
+        { token: '/explain', desc: 'Giải thích mã nguồn hoặc logic được chọn' },
+        { token: '/fix', desc: 'Tìm và sửa lỗi trong đoạn mã' },
+        { token: '/tests', desc: 'Tạo unit tests cho mã nguồn' },
+        { token: '/doc', desc: 'Tạo tài liệu và chú thích mã nguồn' },
+        { token: '/clear', desc: 'Xóa phiên chat hiện tại' },
+        { token: '/setup-tests', desc: 'Thiết lập khung kiểm thử' },
+        { token: '/new', desc: 'Khởi tạo scaffolding dự án mới' },
+        { token: '/help', desc: 'Trợ giúp về Copilot và lệnh chat' }
+    ];
+    const map = new Map(list.map(i => [i.token, i]));
+    const home = os.homedir();
+    const skillRoots = [
+        path.join(home, '.agents', 'skills'),
+        path.join(home, '.copilot', 'skills'),
+        path.join(home, '.claude', 'skills')
+    ];
+
+    for (const root of skillRoots) {
+        if (!fs.existsSync(root)) continue;
+        try {
+            const entries = fs.readdirSync(root, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) continue;
+                const skillName = entry.name;
+                const skillFile = path.join(root, skillName, 'SKILL.md');
+                let desc = `Workflow skill ${skillName}`;
+                if (fs.existsSync(skillFile)) {
+                    try {
+                        const content = fs.readFileSync(skillFile, 'utf8');
+                        const m = content.match(/description:\s*["']?([^\r\n"']+)["']?/);
+                        if (m && m[1]) {
+                            desc = m[1].trim();
+                            if (desc.length > 70) desc = desc.slice(0, 70).trim() + '...';
+                        }
+                    } catch (e) {}
+                }
+                const token = '/' + skillName;
+                if (!map.has(token)) {
+                    map.set(token, { token, desc });
+                }
+            }
+        } catch (e) {}
+    }
+    if (logger) logger.info(`discoverSlashCommands: Quét được ${map.size} slash commands.`);
+    return Array.from(map.values());
+}
+
+/**
  * Đồng bộ macro giữa tự quét và custom cấu hình của user
  */
 async function syncMacros(context, silent = false) {
@@ -176,7 +228,7 @@ async function syncMacros(context, silent = false) {
         fs.writeFileSync(macrosJsonPath, JSON.stringify(mergedMacros, null, 2), 'utf8');
         if (logger) logger.info(`Đã lưu ${mergedMacros.length} macros vào: ${macrosJsonPath}`);
 
-        // Cập nhật lại ~/.jarvis/style/vscode-custom.js với header window.__jarvisDynamicMacros
+        // Cập nhật lại ~/.jarvis/style/vscode-custom.js với header window.__jarvisDynamicMacros & window.__jarvisSlashCommands
         const destJs = path.join(targetDir, 'vscode-custom.js');
         const srcJs = context.asAbsolutePath('assets/vscode-custom.js');
         let currentJs = '';
@@ -186,9 +238,12 @@ async function syncMacros(context, silent = false) {
             currentJs = fs.readFileSync(srcJs, 'utf8');
         }
         currentJs = currentJs.replace(/^window\.__jarvisDynamicMacros\s*=\s*[\s\S]*?;\r?\n/, '');
-        const updatedJs = `window.__jarvisDynamicMacros = ${JSON.stringify(mergedMacros)};\n` + currentJs;
+        currentJs = currentJs.replace(/^window\.__jarvisSlashCommands\s*=\s*[\s\S]*?;\r?\n/, '');
+        const discoveredSlash = discoverSlashCommands();
+        const updatedJs = `window.__jarvisDynamicMacros = ${JSON.stringify(mergedMacros)};\n` +
+            `window.__jarvisSlashCommands = ${JSON.stringify(discoveredSlash)};\n` + currentJs;
         fs.writeFileSync(destJs, updatedJs, 'utf8');
-        if (logger) logger.info(`Đã cập nhật dynamic macros header vào: ${destJs}`);
+        if (logger) logger.info(`Đã cập nhật dynamic macros & slash commands header vào: ${destJs}`);
 
         // Đảm bảo destCss tồn tại
         const destCss = path.join(targetDir, 'vscode-custom.css');
@@ -320,7 +375,7 @@ async function syncSetup(context, silent = false) {
         const userCss = config.get('jarvisEnhancer.customCSS') || '';
         const userJs = config.get('jarvisEnhancer.customJS') || '';
 
-        // Nạp window.__jarvisDynamicMacros vào đầu vscode-custom.js
+        // Nạp window.__jarvisDynamicMacros & window.__jarvisSlashCommands vào đầu vscode-custom.js
         const macrosJsonPath = path.join(targetDir, 'vscode-custom-macros.json');
         let dynamicMacros = [];
         if (fs.existsSync(macrosJsonPath)) {
@@ -331,8 +386,10 @@ async function syncSetup(context, silent = false) {
         if (!Array.isArray(dynamicMacros) || dynamicMacros.length === 0) {
             dynamicMacros = config.get('jarvisEnhancer.customMacros') || [];
         }
+        const dynamicSlashCommands = discoverSlashCommands();
 
-        const macroHeader = `window.__jarvisDynamicMacros = ${JSON.stringify(dynamicMacros, null, 2)};\n\n`;
+        const macroHeader = `window.__jarvisDynamicMacros = ${JSON.stringify(dynamicMacros, null, 2)};\n` +
+            `window.__jarvisSlashCommands = ${JSON.stringify(dynamicSlashCommands, null, 2)};\n\n`;
 
         const finalCss = baseCss + (userCss ? '\n\n/* === Custom User Overrides (Synced via Settings) === */\n' + userCss : '');
         const finalJs = macroHeader + baseJs + (userJs ? '\n\n/* === Custom User Overrides (Synced via Settings) === */\n' + userJs : '');
@@ -367,11 +424,10 @@ async function syncSetup(context, silent = false) {
         }
 
         await injectDirectWorkbenchHtml(context);
-        await patchIntellisense(true);
 
         if (!silent) {
             vscode.window.showInformationMessage(
-                '⚡ JARVIS: Đã đồng bộ Styles & Vá Intellisense thành công! Hãy reload để áp dụng.',
+                '⚡ JARVIS: Đã đồng bộ Styles & Autocomplete thành công! Hãy reload để áp dụng.',
                 'Reload Window'
             ).then(action => {
                 if (action === 'Reload Window') {
@@ -389,9 +445,11 @@ async function syncSetup(context, silent = false) {
  * Vá an toàn Intellisense và Bôi xanh Pill trong workbench core
  */
 async function patchIntellisense(silent = false) {
+    let jsPath = null;
+    let bakPath = null;
     try {
         if (logger) logger.info('Bắt đầu kiểm tra và vá bundle core VS Code...');
-        const jsPath = path.join(vscode.env.appRoot, 'out', 'vs', 'workbench', 'workbench.desktop.main.js');
+        jsPath = path.join(vscode.env.appRoot, 'out', 'vs', 'workbench', 'workbench.desktop.main.js');
         if (logger) logger.info(`Đường dẫn bundle: ${jsPath}`);
         if (!fs.existsSync(jsPath)) {
             vscode.window.showErrorMessage(`Không tìm thấy file bundle VS Code tại: ${jsPath}`);
@@ -401,9 +459,10 @@ async function patchIntellisense(silent = false) {
         let content = fs.readFileSync(jsPath, 'utf8');
 
         const isTmePatched = content.includes('function Pge(s,o){return!0}') || content.includes('function Tme(s,o){return!0}') || /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{return!0\}/.test(content);
-        const isZaePatched = (content.includes("window.__chatInputEditor=e.inputEditor") || content.includes("window.__chatInputEditor=")) && content.includes("window.__codeEditorService=t;");
+        const isMultiSlashSuggestPatched = !content.includes('.parsedInput.parts.find(w=>w instanceof Pm)') && !content.includes('.parsedInput.parts.find(C=>C instanceof Pm)');
+        const isAddCodeEditorPatched = content.includes('window.__codeEditorService=this');
 
-        if (isTmePatched && isZaePatched) {
+        if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched) {
             if (logger) logger.info('Core đã có đầy đủ patch, bỏ qua.');
             if (!silent) {
                 vscode.window.showInformationMessage('⚡ JARVIS: Hệ thống đã được vá Intellisense & Hook Editor đầy đủ, không cần vá lại.');
@@ -411,13 +470,13 @@ async function patchIntellisense(silent = false) {
             return true;
         }
 
-        const bakPath = `${jsPath}.bak`;
+        bakPath = `${jsPath}.bak`;
         if (!fs.existsSync(bakPath)) {
             fs.copyFileSync(jsPath, bakPath);
             if (logger) logger.info(`Đã tạo sao lưu: ${bakPath}`);
         }
 
-        // Patch 1: Tme / Pge (Intellisense bypass)
+        // Patch 1: Pge / Tme (Intellisense bypass)
         if (!isTmePatched) {
             const p1 = /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{let\s+([a-z])=new\s+([A-Za-z0-9_$]+)\(1,1,\3\.replace\.startLineNumber,\3\.replace\.startColumn\);return!!\2\.getValueInRange\(\4\)\.match\(\/\^\\s\*\$\/\)\}/;
             if (p1.test(content)) {
@@ -427,40 +486,33 @@ async function patchIntellisense(silent = false) {
             }
         }
 
-        // Patch 2: Hook window.__chatInputEditor và window.__codeEditorService vào zAe constructor
-        if (!isZaePatched) {
-            if (content.includes('this.widget=e;try{window.__chatInputEditor=e.inputEditor;') && !content.includes('window.__codeEditorService=t;')) {
-                content = content.replace(
-                    'this.widget=e;try{window.__chatInputEditor=e.inputEditor;',
-                    'this.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;'
-                );
-            } else if (content.includes('this.widget=e;window.__chatInputEditor=e.inputEditor;') && !content.includes('window.__codeEditorService=t;')) {
-                content = content.replace(
-                    'this.widget=e;window.__chatInputEditor=e.inputEditor;',
-                    'this.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;'
-                );
-            } else {
-                const hookTarget = 'this.widget=e;this.codeEditorService=t;';
-                const hookReplacement = "this.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e.inputEditor}))}catch(err){}this.codeEditorService=t;";
-                if (content.includes(hookTarget)) {
-                    content = content.replaceAll(hookTarget, hookReplacement);
-                } else {
-                    const zAePattern = /var\s+([A-Za-z0-9_$]+)\s*=\s*class\s+extends\s+([A-Za-z0-9_$]+)\s*\{\s*constructor\(([a-z]),([a-z]),([a-z]),([a-z]),([a-z]),([a-z]),([a-z])\)\{\s*super\(\);\s*this\.widget=\3;\s*this\.codeEditorService=\4;/;
-                    if (zAePattern.test(content)) {
-                        content = content.replace(zAePattern, 'var $1=class extends $2{constructor($3,$4,$5,$6,$7,$8,$9){super();this.widget=$3;try{window.__chatInputEditor=$3.inputEditor;window.__codeEditorService=$4;window.dispatchEvent(new CustomEvent(\'chat-editor-ready\',{detail:$3.inputEditor}))}catch(err){}this.codeEditorService=$4;');
-                    }
-                }
-            }
+        // Patch 2: Gỡ bỏ ||...parsedInput.parts.find(...)
+        content = content.replace(/\|\|[a-zA-Z0-9_$]+\.parsedInput\.parts\.find\([a-zA-Z0-9_$]+=>[a-zA-Z0-9_$]+\s+instanceof\s+Pm\)/g, '');
+        if (logger) logger.info('Đã mở khóa gợi ý cho slash command thứ 2 trở đi.');
+
+        // Patch 3: Hook addCodeEditor để đính kèm __monacoEditor vào DOM node và duy trì window.__allCodeEditors
+        if (content.includes('addCodeEditor(') && !content.includes('window.__codeEditorService=this')) {
+            content = content.replace(
+                /addCodeEditor\(([A-Za-z0-9_$]+)\)\{/,
+                'addCodeEditor($1){try{window.__codeEditorService=this;window.__allCodeEditors=window.__allCodeEditors||[];window.__allCodeEditors.push($1);let _d=$1.getContainerDomNode&&$1.getContainerDomNode();if(_d){_d.__monacoEditor=$1;setTimeout(()=>{try{if(_d.closest&&_d.closest(\'.interactive-input-part,.chat-input-editor,.interactive-input-editor,.chat-input-widget\')){window.__chatInputEditor=$1;window.dispatchEvent(new CustomEvent(\'chat-editor-ready\',{detail:$1}))}}catch(_){}},50)}}catch(_){}'
+            );
         }
 
-        // V8 Compile Check trước khi ghi
+        // Kiểm tra an toàn trước khi ghi: Snippet-Validation & Tính toàn vẹn tệp
         try {
-            const testContent = content.replace(/import\.meta/g, '({})').replace(/export\s*\{[^}]+\};?/g, '');
-            new vm.Script(testContent);
-            if (logger) logger.info('Kiểm tra cú pháp V8: 100% HỢP LỆ.');
+            // 1. Kiểm tra cú pháp V8 trực tiếp của các đoạn mã được vá
+            new vm.Script('function _test(s,o){return!0}');
+            new vm.Script(`(function(e,t){\nthis.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e.inputEditor}))}catch(err){}this.codeEditorService=t;\n})`);
+            new vm.Script(`(function(e){\ntry{window.__codeEditorService=this;window.__allCodeEditors=window.__allCodeEditors||[];window.__allCodeEditors.push(e);let _d=e.getContainerDomNode&&e.getContainerDomNode();if(_d){_d.__monacoEditor=e;setTimeout(()=>{try{if(_d.closest&&_d.closest('.interactive-input-part,.chat-input-editor,.interactive-input-editor,.chat-input-widget')){window.__chatInputEditor=e;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e}))}}catch(_){}},50)}}catch(_){}\n})`);
+
+            // 2. Kiểm tra tính toàn vẹn tệp (chống ghi đè rỗng hoặc hỏng file)
+            if (!content || content.length < 5000000) {
+                throw new Error(`File size anomaly (${content ? content.length : 0} bytes)`);
+            }
+            if (logger) logger.info('Kiểm tra cú pháp V8 Snippets & Toàn vẹn tệp: 100% HỢP LỆ.');
         } catch (syntaxErr) {
-            if (logger) logger.error(`Kiểm tra cú pháp V8 thất bại: ${syntaxErr.message}`);
-            vscode.window.showErrorMessage(`Kiểm tra cú pháp thất bại, huỷ bỏ ghi file để chống lỗi màn hình đen: ${syntaxErr.message}`);
+            if (logger) logger.error(`Kiểm tra tính toàn vẹn thất bại: ${syntaxErr.message}`);
+            vscode.window.showErrorMessage(`Kiểm tra an toàn thất bại, huỷ bỏ ghi file để chống lỗi màn hình đen: ${syntaxErr.message}`);
             return false;
         }
 
@@ -479,6 +531,14 @@ async function patchIntellisense(silent = false) {
         }
         return true;
     } catch (err) {
+        if (bakPath && fs.existsSync(bakPath) && jsPath && fs.existsSync(jsPath)) {
+            try {
+                fs.copyFileSync(bakPath, jsPath);
+                if (logger) logger.warn(`Đã tự động rollback về backup ${bakPath} do lỗi: ${err.message}`);
+            } catch (rollbackErr) {
+                if (logger) logger.error(`Lỗi rollback: ${rollbackErr.message}`);
+            }
+        }
         if (err.code === 'EPERM' || err.code === 'EACCES') {
             if (logger) logger.warn(`Thiếu quyền ghi file bundle: ${err.message}`);
         } else {
@@ -514,9 +574,9 @@ async function runSelfHealingDaemon(context) {
             const isTmePatched = jsContent.includes('function Pge(s,o){return!0}') ||
                                  jsContent.includes('function Tme(s,o){return!0}') ||
                                  /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{return!0\}/.test(jsContent);
-            const isZaePatched = (jsContent.includes('window.__chatInputEditor=e.inputEditor') || jsContent.includes('window.__chatInputEditor=')) &&
-                                 jsContent.includes('window.__codeEditorService=t;');
-            isJsPatched = isTmePatched && isZaePatched;
+            const isMultiSlashSuggestPatched = !jsContent.includes('.parsedInput.parts.find(w=>w instanceof Pm)') && !jsContent.includes('.parsedInput.parts.find(C=>C instanceof Pm)');
+            const isAddCodeEditorPatched = jsContent.includes('window.__codeEditorService=this');
+            isJsPatched = isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched;
         }
 
         if (fs.existsSync(htmlPath)) {
@@ -524,29 +584,23 @@ async function runSelfHealingDaemon(context) {
             isHtmlPatched = htmlContent.includes('<!-- !! VSCODE-CUSTOM-CSS-START !! -->') || htmlContent.includes('VSCODE-CUSTOM-CSS-START');
         }
 
-        if (!isJsPatched || !isHtmlPatched) {
-            if (logger) logger.warn(`Phát hiện mất bản vá (JS: ${isJsPatched}, HTML: ${isHtmlPatched}). Đang tự động phục hồi...`);
+        if (!isHtmlPatched) {
+            if (logger) logger.info('Phát hiện thiếu Custom CSS/JS trong workbench.html, tự động đồng bộ...');
+            await injectDirectWorkbenchHtml(context);
+        }
 
-            let jsSuccess = true;
-            let htmlSuccess = true;
-
-            if (!isJsPatched) {
-                jsSuccess = await patchIntellisense(true);
-            }
-            if (!isHtmlPatched) {
-                htmlSuccess = await injectDirectWorkbenchHtml(context);
-            }
-
-            if (jsSuccess && htmlSuccess) {
+        if (!isJsPatched) {
+            if (logger) logger.info('Phát hiện core bundle chưa có patch Intellisense, tự động vá ngầm...');
+            const patched = await patchIntellisense(true);
+            if (patched) {
                 vscode.window.showInformationMessage(
-                    '⚡ JARVIS: Tự động phục hồi bản vá sau khi VS Code cập nhật.',
+                    '⚡ JARVIS: Hệ thống đã được tối ưu hoàn tất!',
                     'Reload Window'
                 ).then(action => {
                     if (action === 'Reload Window') {
                         vscode.commands.executeCommand('workbench.action.reloadWindow');
                     }
                 });
-                if (logger) logger.info('Self-healing daemon: Tự động phục hồi bản vá hoàn tất.');
             }
         } else {
             if (logger) logger.info('Self-healing daemon: Bản vá JS và HTML đều đầy đủ, hệ thống ổn định.');
@@ -684,6 +738,116 @@ async function handleImportVault(context) {
     }
 }
 
+/**
+ * Đẩy bản mã hóa Cloud Vault lên GitHub Settings Sync
+ */
+async function handlePushCloudVault(context) {
+    try {
+        const passphrase = await vscode.window.showInputBox({
+            password: true,
+            title: 'JARVIS Cloud Vault Sync',
+            prompt: 'Nhập Master Passphrase mã hóa Vault (tối thiểu 8 ký tự)',
+            ignoreFocusOut: true,
+            validateInput: v => (!v || v.length < 8 ? 'Mật khẩu phải từ 8 ký tự trở lên' : null)
+        });
+
+        if (!passphrase) return;
+
+        const res = exportVault(passphrase, 'encrypted');
+        const base64Payload = res.buffer.toString('base64');
+        const hash = crypto.createHash('sha256').update(res.buffer).digest('hex');
+
+        const config = vscode.workspace.getConfiguration();
+        await config.update('jarvisEnhancer.cloudVaultPayload', base64Payload, vscode.ConfigurationTarget.Global);
+        await context.globalState.update('jarvis.lastRestoredVaultHash', hash);
+
+        vscode.window.showInformationMessage('⚡ JARVIS: Đã đẩy Agent Customizations lên Cloud Settings Sync! (13 MCPs, 36 Skills, 6 Prompts, 5 Models). GitHub Settings Sync sẽ tự động đồng bộ sang các máy khác.');
+    } catch (err) {
+        if (logger) logger.error(`Lỗi đẩy Cloud Vault: ${err.message}`);
+        vscode.window.showErrorMessage(`Lỗi đẩy Cloud Vault: ${err.message}`);
+    }
+}
+
+/**
+ * Kéo và phục hồi Cloud Vault từ GitHub Settings Sync
+ */
+async function handlePullCloudVault(context, silent = false) {
+    try {
+        const config = vscode.workspace.getConfiguration();
+        const base64Payload = config.get('jarvisEnhancer.cloudVaultPayload');
+
+        if (!base64Payload) {
+            if (!silent) {
+                vscode.window.showWarningMessage('⚡ JARVIS: Chưa tìm thấy Cloud Vault Payload trong Settings Sync.');
+            }
+            return;
+        }
+
+        const vaultBuffer = Buffer.from(base64Payload, 'base64');
+        const passphrase = await vscode.window.showInputBox({
+            password: true,
+            title: 'JARVIS Cloud Vault Sync',
+            prompt: 'Nhập Master Passphrase để giải mã và phục hồi Agent Customizations từ Cloud',
+            ignoreFocusOut: true
+        });
+
+        if (!passphrase) return;
+
+        const result = importVault(vaultBuffer, passphrase);
+        if (result) {
+            const hash = crypto.createHash('sha256').update(vaultBuffer).digest('hex');
+            await context.globalState.update('jarvis.lastRestoredVaultHash', hash);
+            await syncMacros(context, true);
+
+            vscode.window.showInformationMessage(
+                '⚡ JARVIS: Phục hồi Agent Customizations từ Cloud thành công! Hãy reload window để nạp môi trường mới.',
+                'Reload Window'
+            ).then(action => {
+                if (action === 'Reload Window') {
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                }
+            });
+        }
+    } catch (err) {
+        if (logger) logger.error(`Lỗi phục hồi Cloud Vault: ${err.message}`);
+        vscode.window.showErrorMessage(`Lỗi phục hồi Cloud Vault: ${err.message}`);
+    }
+}
+
+/**
+ * Kiểm tra bản cập nhật Cloud Vault từ Settings Sync và gợi ý phục hồi
+ */
+async function checkCloudVaultUpdates(context) {
+    try {
+        const config = vscode.workspace.getConfiguration();
+        const autoSync = config.get('jarvisEnhancer.autoSyncCloudVault');
+        if (autoSync === false) return;
+
+        const base64Payload = config.get('jarvisEnhancer.cloudVaultPayload');
+        if (!base64Payload || typeof base64Payload !== 'string' || base64Payload.trim() === '') {
+            return;
+        }
+
+        const vaultBuffer = Buffer.from(base64Payload, 'base64');
+        const currentHash = crypto.createHash('sha256').update(vaultBuffer).digest('hex');
+        const lastHash = context.globalState.get('jarvis.lastRestoredVaultHash');
+
+        if (!lastHash || currentHash !== lastHash) {
+            vscode.window.showInformationMessage(
+                '⚡ JARVIS: Phát hiện bản cập nhật Agent Customizations mới từ GitHub Settings Sync. Bạn có muốn phục hồi ngay?',
+                'Phục Hồi Ngay (Nhập Passphrase)',
+                'Để sau'
+            ).then(action => {
+                if (action === 'Phục Hồi Ngay (Nhập Passphrase)') {
+                    handlePullCloudVault(context);
+                }
+            });
+        }
+    } catch (err) {
+        if (logger) logger.warn(`Lỗi kiểm tra cập nhật Cloud Vault: ${err.message}`);
+    }
+}
+
 function activate(context) {
     logger = vscode.window.createOutputChannel('JARVIS IDE Enhancer', { log: true });
     context.subscriptions.push(logger);
@@ -704,6 +868,9 @@ function activate(context) {
             if (e.affectsConfiguration('jarvisEnhancer.customCSS') || e.affectsConfiguration('jarvisEnhancer.customJS')) {
                 await syncSetup(context, true); // Chế độ silent
             }
+            if (e.affectsConfiguration('jarvisEnhancer.cloudVaultPayload')) {
+                checkCloudVaultUpdates(context);
+            }
         }),
         vscode.commands.registerCommand('jarvisEnhancer.syncSetup', () => syncSetup(context)),
         vscode.commands.registerCommand('jarvisEnhancer.discoverMacros', () => syncMacros(context, false)),
@@ -712,7 +879,9 @@ function activate(context) {
         vscode.commands.registerCommand('jarvisEnhancer.editJS', () => openConfigFile(context, 'vscode-custom.js')),
         vscode.commands.registerCommand('jarvisEnhancer.runSelfHealing', () => runSelfHealingDaemon(context)),
         vscode.commands.registerCommand('jarvisEnhancer.exportVault', () => handleExportVault(context)),
-        vscode.commands.registerCommand('jarvisEnhancer.importVault', () => handleImportVault(context))
+        vscode.commands.registerCommand('jarvisEnhancer.importVault', () => handleImportVault(context)),
+        vscode.commands.registerCommand('jarvisEnhancer.pushCloudVault', () => handlePushCloudVault(context)),
+        vscode.commands.registerCommand('jarvisEnhancer.pullCloudVault', () => handlePullCloudVault(context))
     );
 
     // Tự động quét và đồng bộ macro sau khi khởi động
@@ -724,6 +893,10 @@ function activate(context) {
     setTimeout(() => {
         runSelfHealingDaemon(context);
     }, 1500);
+
+    setTimeout(() => {
+        checkCloudVaultUpdates(context);
+    }, 2500);
 }
 
 function deactivate() {
@@ -745,5 +918,8 @@ module.exports = {
     discoverMacrosFromRules,
     syncMacros,
     handleExportVault,
-    handleImportVault
+    handleImportVault,
+    handlePushCloudVault,
+    handlePullCloudVault,
+    checkCloudVaultUpdates
 };

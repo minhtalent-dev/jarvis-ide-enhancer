@@ -84,7 +84,56 @@ function loadOrScanMacros() {
     return macros;
 }
 
-// 2. Đảm bảo copy assets sang ~/.jarvis/style/ và inject dynamic macros header
+// 1.1. Quét slash commands từ skills (~/.agents/skills, ~/.copilot/skills, ~/.claude/skills)
+function loadOrScanSlashCommands() {
+    const list = [
+        { token: '/explain', desc: 'Giải thích mã nguồn hoặc logic được chọn' },
+        { token: '/fix', desc: 'Tìm và sửa lỗi trong đoạn mã' },
+        { token: '/tests', desc: 'Tạo unit tests cho mã nguồn' },
+        { token: '/doc', desc: 'Tạo tài liệu và chú thích mã nguồn' },
+        { token: '/clear', desc: 'Xóa phiên chat hiện tại' },
+        { token: '/setup-tests', desc: 'Thiết lập khung kiểm thử' },
+        { token: '/new', desc: 'Khởi tạo scaffolding dự án mới' },
+        { token: '/help', desc: 'Trợ giúp về Copilot và lệnh chat' }
+    ];
+    const map = new Map(list.map(i => [i.token, i]));
+    const home = os.homedir();
+    const skillRoots = [
+        path.join(home, '.agents', 'skills'),
+        path.join(home, '.copilot', 'skills'),
+        path.join(home, '.claude', 'skills')
+    ];
+
+    for (const root of skillRoots) {
+        if (!fs.existsSync(root)) continue;
+        try {
+            const entries = fs.readdirSync(root, { withFileTypes: true });
+            for (const entry of entries) {
+                if (!entry.isDirectory()) continue;
+                const skillName = entry.name;
+                const skillFile = path.join(root, skillName, 'SKILL.md');
+                let desc = `Workflow skill ${skillName}`;
+                if (fs.existsSync(skillFile)) {
+                    try {
+                        const content = fs.readFileSync(skillFile, 'utf8');
+                        const m = content.match(/description:\s*["']?([^\r\n"']+)["']?/);
+                        if (m && m[1]) {
+                            desc = m[1].trim();
+                            if (desc.length > 70) desc = desc.slice(0, 70).trim() + '...';
+                        }
+                    } catch (e) {}
+                }
+                const token = '/' + skillName;
+                if (!map.has(token)) {
+                    map.set(token, { token, desc });
+                }
+            }
+        } catch (e) {}
+    }
+    return Array.from(map.values());
+}
+
+// 2. Đảm bảo copy assets sang ~/.jarvis/style/ và inject dynamic macros/slash commands header
 const srcCss = path.join(assetsDir, 'vscode-custom.css');
 const srcJs = path.join(assetsDir, 'vscode-custom.js');
 const destCss = path.join(jarvisStyleDir, 'vscode-custom.css');
@@ -98,14 +147,17 @@ if (fs.existsSync(srcCss)) {
 }
 
 const macros = loadOrScanMacros();
-const macroHeader = `window.__jarvisDynamicMacros = ${JSON.stringify(macros)};\n`;
+const slashCommands = loadOrScanSlashCommands();
+const macroHeader = `window.__jarvisDynamicMacros = ${JSON.stringify(macros)};\n` +
+    `window.__jarvisSlashCommands = ${JSON.stringify(slashCommands)};\n`;
 
 if (fs.existsSync(srcJs)) {
     let baseJs = fs.readFileSync(srcJs, 'utf8');
     baseJs = baseJs.replace(/^window\.__jarvisDynamicMacros\s*=\s*[\s\S]*?;\r?\n/, '');
+    baseJs = baseJs.replace(/^window\.__jarvisSlashCommands\s*=\s*[\s\S]*?;\r?\n/, '');
     const finalJs = macroHeader + baseJs;
     fs.writeFileSync(destJs, finalJs, 'utf8');
-    console.log(`Đã ghi: ${srcJs} (kèm header ${macros.length} dynamic macros) -> ${destJs}`);
+    console.log(`Đã ghi: ${srcJs} (kèm header ${macros.length} macros, ${slashCommands.length} slash commands) -> ${destJs}`);
 } else {
     console.warn(`Không tìm thấy srcJs: ${srcJs}`);
 }

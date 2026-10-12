@@ -2,9 +2,9 @@
   "name": "jarvis-ide-enhancer",
   "displayName": "JARVIS IDE Enhancer",
   "description": "Enhance VS Code with JARVIS 3D cursor, chat styles, prompt slash intellisense, and UI automation.",
-  "version": "1.1.15",
+  "version": "1.1.27",
   "publisher": "minhtalent-dev",
-  "author": "minh <minh.tuthienbao@vn.sharp-world.com>",
+  "author": "minh <baominh20398@gmail.com>",
   "license": "MIT",
   "icon": "assets/icon.png",
   "categories": [
@@ -79,6 +79,17 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically discover macro rules from .instructions.md files."
+        },
+        "jarvisEnhancer.cloudVaultPayload": {
+          "type": "string",
+          "default": "",
+          "description": "Encrypted AES-256-GCM Agent Customizations Vault payload automatically synchronized across machines via GitHub Settings Sync.",
+          "scope": "application"
+        },
+        "jarvisEnhancer.autoSyncCloudVault": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically detect and prompt to restore encrypted customizations from Cloud Settings Sync on startup."
         }
       }
     },
@@ -90,7 +101,7 @@
       },
       {
         "command": "jarvisEnhancer.discoverMacros",
-        "title": "JARVIS: Discover Macros & Sync Settings",
+        "title": "Discover Macros & Sync Settings",
         "category": "JARVIS"
       },
       {
@@ -110,17 +121,27 @@
       },
       {
         "command": "jarvisEnhancer.runSelfHealing",
-        "title": "JARVIS: Run Self-Healing & Verify Patches",
+        "title": "Run Self-Healing & Verify Patches",
         "category": "JARVIS"
       },
       {
         "command": "jarvisEnhancer.exportVault",
-        "title": "JARVIS: Export Agent Customizations Vault",
+        "title": "Export Agent Customizations Vault",
         "category": "JARVIS"
       },
       {
         "command": "jarvisEnhancer.importVault",
-        "title": "JARVIS: Import Agent Customizations Vault",
+        "title": "Import Agent Customizations Vault",
+        "category": "JARVIS"
+      },
+      {
+        "command": "jarvisEnhancer.pushCloudVault",
+        "title": "Push Agent Customizations to Cloud (Settings Sync)",
+        "category": "JARVIS"
+      },
+      {
+        "command": "jarvisEnhancer.pullCloudVault",
+        "title": "Pull & Restore Agent Customizations from Cloud",
         "category": "JARVIS"
       }
     ]
