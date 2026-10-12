@@ -442,6 +442,113 @@ async function syncSetup(context, silent = false) {
 }
 
 /**
+ * Tìm tất cả các thư mục CachedData trên các nền tảng (Windows, macOS, Linux)
+ */
+function resolveCachedDataDirs(context = null) {
+    const candidates = [];
+
+    // Ưu tiên 1: Lấy từ context.globalStorageUri nếu có
+    if (context && context.globalStorageUri && context.globalStorageUri.fsPath) {
+        try {
+            const userDataDir = path.resolve(context.globalStorageUri.fsPath, '../../..');
+            const candidate = path.join(userDataDir, 'CachedData');
+            if (fs.existsSync(candidate)) candidates.push(candidate);
+        } catch (_) {}
+    }
+
+    // Ưu tiên 2: Đường dẫn chuẩn theo từng OS
+    const home = os.homedir();
+    const appNames = ['Code', 'Code - Insiders', 'VSCodium'];
+
+    if (process.platform === 'win32') {
+        const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+        for (const app of appNames) {
+            candidates.push(path.join(appData, app, 'CachedData'));
+        }
+    } else if (process.platform === 'darwin') {
+        for (const app of appNames) {
+            candidates.push(path.join(home, 'Library', 'Application Support', app, 'CachedData'));
+        }
+    } else {
+        const configRoot = process.env.XDG_CONFIG_HOME || path.join(home, '.config');
+        for (const app of appNames) {
+            candidates.push(path.join(configRoot, app, 'CachedData'));
+        }
+    }
+
+    return Array.from(new Set(candidates.filter(d => fs.existsSync(d))));
+}
+
+/**
+ * Xóa an toàn từng tệp trong thư mục CachedData, chống lỗi EBUSY/EPERM khi file bị Chromium lock
+ */
+function clearCachedDataSafely(targetPath) {
+    if (!targetPath || !fs.existsSync(targetPath)) return { deleted: 0, skipped: 0 };
+    let deleted = 0;
+    let skipped = 0;
+
+    try {
+        const stat = fs.statSync(targetPath);
+        if (stat.isDirectory()) {
+            const entries = fs.readdirSync(targetPath);
+            for (const entry of entries) {
+                const subPath = path.join(targetPath, entry);
+                const subRes = clearCachedDataSafely(subPath);
+                deleted += subRes.deleted;
+                skipped += subRes.skipped;
+            }
+            try {
+                fs.rmdirSync(targetPath);
+            } catch (_) {
+                skipped++;
+            }
+        } else {
+            try {
+                fs.unlinkSync(targetPath);
+                deleted++;
+            } catch (_) {
+                skipped++;
+            }
+        }
+    } catch (_) {
+        skipped++;
+    }
+
+    return { deleted, skipped };
+}
+
+/**
+ * Tự động quét và dọn sạch tất cả các thư mục V8 CachedData
+ */
+function autoPurgeV8Cache(context = null) {
+    try {
+        const dirs = resolveCachedDataDirs(context);
+        let totalDeleted = 0;
+        let totalSkipped = 0;
+
+        for (const dir of dirs) {
+            try {
+                const entries = fs.readdirSync(dir);
+                for (const sub of entries) {
+                    const subPath = path.join(dir, sub);
+                    const res = clearCachedDataSafely(subPath);
+                    totalDeleted += res.deleted;
+                    totalSkipped += res.skipped;
+                }
+            } catch (_) {}
+        }
+
+        if (logger) {
+            logger.info(`AutoPurge V8 Cache: Đã xóa ${totalDeleted} tệp bytecode cache, bỏ qua ${totalSkipped} tệp đang bị khóa.`);
+        }
+        return { totalDeleted, totalSkipped };
+    } catch (err) {
+        if (logger) logger.warn(`AutoPurge V8 Cache gặp lỗi: ${err.message}`);
+        return { totalDeleted: 0, totalSkipped: 0 };
+    }
+}
+
+/**
  * Vá an toàn Intellisense và Bôi xanh Pill trong workbench core
  */
 async function patchIntellisense(silent = false) {
@@ -463,9 +570,11 @@ async function patchIntellisense(silent = false) {
         const isAddCodeEditorPatched = content.includes('window.__codeEditorService=this');
 
         if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched) {
-            if (logger) logger.info('Core đã có đầy đủ patch, bỏ qua.');
+            if (logger) logger.info('Core đã có đầy đủ patch, bỏ qua việc sửa file bundle.');
+            // Vẫn tự động dọn dẹp cache V8 để tránh tình trạng bytecode cũ bị kẹt
+            autoPurgeV8Cache();
             if (!silent) {
-                vscode.window.showInformationMessage('⚡ JARVIS: Hệ thống đã được vá Intellisense & Hook Editor đầy đủ, không cần vá lại.');
+                vscode.window.showInformationMessage('⚡ JARVIS: Hệ thống đã được vá Intellisense & Hook Editor đầy đủ, cache V8 đã được làm mới.');
             }
             return true;
         }
@@ -518,6 +627,9 @@ async function patchIntellisense(silent = false) {
 
         fs.writeFileSync(jsPath, content, 'utf8');
         if (logger) logger.info('Đã ghi đè patch vào workbench.desktop.main.js thành công.');
+
+        // Tự động dọn dẹp sạch V8 Bytecode Cache để ép Chromium nạp bản vá ngay sau Reload
+        autoPurgeV8Cache();
 
         if (!silent) {
             vscode.window.showInformationMessage(

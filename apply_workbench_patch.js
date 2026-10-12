@@ -102,6 +102,28 @@ try {
     if (!vPatch1 || !vPatch2 || !vPatch3) {
         throw new Error('Xác minh thất bại');
     }
+
+    // 7. Tự động dọn dẹp sạch V8 Bytecode Cache
+    try {
+        function clearSafely(p) {
+            if (!p || !fs.existsSync(p)) return;
+            const stat = fs.statSync(p);
+            if (stat.isDirectory()) {
+                const entries = fs.readdirSync(p);
+                for (const sub of entries) clearSafely(path.join(p, sub));
+                try { fs.rmdirSync(p); } catch (_) {}
+            } else {
+                try { fs.unlinkSync(p); } catch (_) {}
+            }
+        }
+        const appData = process.env.APPDATA || (process.platform === 'darwin' ? path.join(os.homedir(), 'Library', 'Application Support') : path.join(os.homedir(), '.config'));
+        const cdDir = path.join(appData, 'Code', 'CachedData');
+        if (fs.existsSync(cdDir)) {
+            const subDirs = fs.readdirSync(cdDir);
+            for (const sub of subDirs) clearSafely(path.join(cdDir, sub));
+            console.log('Đã tự động dọn sạch V8 CachedData!');
+        }
+    } catch (_) {}
 } catch (err) {
     console.error(`LỖI: ${err.message}. Đang rollback...`);
     if (bakPath && fs.existsSync(bakPath)) {

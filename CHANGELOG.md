@@ -7,6 +7,7 @@ All notable changes to the **JARVIS IDE Enhancer** extension will be documented 
 ### Added
 - **Gợi ý tự động thông minh cho Slash Command & Macro:** Bổ sung cửa sổ gợi ý nổi thông minh hỗ trợ cả lệnh gạch chéo (`/`) và macro (``` ` ```), tự động nhận diện toàn bộ danh mục kỹ năng và lệnh quy trình làm việc.
 - **Tự động quét kỹ năng quy trình:** Tích hợp bộ quét tự động danh mục quy trình làm việc và kỹ năng sẵn có trên máy để hiển thị đầy đủ trong bảng gợi ý chat.
+- **Tự động dọn sạch V8 Bytecode Cache (Zero-PowerShell):** Tự động dọn dẹp cache bytecode đa nền tảng sau khi vá file, đảm bảo các máy mới nhận diện ngay lập tức mà không cần chạy lệnh PowerShell thủ công.
 
 ### Fixed
 - **Bảo toàn hiển thị Terminal có nội dung trong Chat:** Khắc phục triệt để lỗi bộ lọc khiến các thẻ terminal có dữ liệu bị ẩn nhầm trên giao diện chat. Chỉ ẩn thông báo rỗng khi lệnh thực sự không có kết quả xuất ra.
