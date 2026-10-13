@@ -488,69 +488,171 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
 }
 
 /* ==========================================================================
-   Bespoke Glassmorphism Styling cho Chat Artifacts Widget (.chat-artifacts-*)
+   Bespoke Fluent Styling cho Chat Artifacts Widget (.chat-artifacts-*)
+   Docking liền mạch với Chat Input Stack & Todos, hiệu ứng hover tinh tế
    ========================================================================== */
 
-/* 1. Khung chứa Artifacts Widget phía trên ô chat input */
+/* 1. Khung chứa Artifacts Widget - Ép sát vào Chat Input Stack */
 .interactive-session .interactive-input-part .chat-artifacts-widget-container {
-    margin-bottom: 6px !important;
-    border-radius: 8px !important;
-    overflow: hidden !important;
+    width: 100% !important;
+    position: relative !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    z-index: 2 !important;
 }
 
-/* 2. Thẻ Artifacts Widget chính */
+/* 2. Thẻ Artifacts Widget chính - Ăn liền với khung chat và Todos */
 .chat-artifacts-widget {
-    border-radius: 8px !important;
-    background: color-mix(in srgb, var(--vscode-editorWidget-background, #181825) 85%, transparent) !important;
-    backdrop-filter: blur(16px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-    border: 1px solid var(--vscode-editorWidget-border, rgba(255, 255, 255, 0.12)) !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
-    padding: 4px 8px !important;
-    transition: all 0.2s ease !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    padding: 2px 4px !important;
+    margin: 0 !important;
+    background: color-mix(in srgb, var(--vscode-input-background, var(--vscode-editor-background, #1e1e2e)) 80%, transparent) !important;
+    backdrop-filter: blur(12px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
+    border-left: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.08)) !important;
+    border-right: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.08)) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-bottom: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transition: background-color 0.2s ease, border-color 0.2s ease !important;
 }
 
-/* 3. Thanh tiêu đề mở rộng Artifacts */
+/* Khi Artifacts là thành phần đầu tiên trong stack (không có Todos phía trên) */
+.interactive-session .interactive-input-part .chat-artifacts-widget-container:first-child .chat-artifacts-widget,
+.interactive-session .interactive-input-part .chat-input-stack > .chat-artifacts-widget-container:first-of-type:not(.chat-input-stack-continues) .chat-artifacts-widget {
+    border-radius: var(--chat-input-stack-radius-top, var(--vscode-cornerRadius-large, 8px)) var(--chat-input-stack-radius-top, var(--vscode-cornerRadius-large, 8px)) 0 0 !important;
+    border-top: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.08)) !important;
+}
+
+/* 3. Thanh tiêu đề mở rộng Artifacts (Header Button) */
+.chat-artifacts-widget .chat-artifacts-expand {
+    width: 100% !important;
+}
+
 .chat-artifacts-widget .chat-artifacts-expand .monaco-button {
-    border-radius: 6px !important;
-    padding: 3px 6px !important;
-    transition: background-color 0.15s ease !important;
+    width: 100% !important;
+    height: 26px !important;
+    box-sizing: border-box !important;
+    border-radius: 4px !important;
+    padding: 0 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    cursor: pointer !important;
+    transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .chat-artifacts-widget .chat-artifacts-expand .monaco-button:hover {
-    background-color: rgba(192, 132, 252, 0.12) !important;
+    background: color-mix(in srgb, #a855f7 12%, rgba(255, 255, 255, 0.06)) !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-expand .monaco-button:active {
+    background: color-mix(in srgb, #a855f7 20%, rgba(255, 255, 255, 0.1)) !important;
 }
 
 .chat-artifacts-widget .chat-artifacts-title-section {
-    font-weight: 600 !important;
-    font-size: 11px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-weight: 500 !important;
+    font-size: 11.5px !important;
+    line-height: 26px !important;
     color: var(--vscode-foreground, #e2e8f0) !important;
+    letter-spacing: 0.2px !important;
 }
 
-/* 4. Từng dòng danh sách Artifact */
+.chat-artifacts-widget .chat-artifacts-expand .monaco-button:hover .chat-artifacts-title-section {
+    color: #f1f5f9 !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-title-section .expand-icon.codicon {
+    font-size: 13px !important;
+    color: var(--vscode-icon-foreground, #94a3b8) !important;
+    transition: color 0.15s ease, transform 0.15s ease !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-expand .monaco-button:hover .expand-icon.codicon {
+    color: #c084fc !important;
+}
+
+/* 4. Danh sách Artifacts (Body List) */
+.chat-artifacts-widget .chat-artifacts-list {
+    margin-top: 2px !important;
+    padding-bottom: 2px !important;
+}
+
 .chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row {
-    border-radius: 6px !important;
-    margin: 1px 0 !important;
-    transition: background-color 0.12s ease !important;
+    height: 24px !important;
+    line-height: 24px !important;
+    border-radius: 4px !important;
+    margin: 1px 2px !important;
+    padding: 0 6px !important;
+    box-sizing: border-box !important;
+    border: 1px solid transparent !important;
+    cursor: pointer !important;
+    transition: background-color 0.12s ease, border-color 0.12s ease !important;
 }
 
 .chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row:hover {
-    background-color: rgba(192, 132, 252, 0.14) !important;
+    background: color-mix(in srgb, #a855f7 14%, rgba(255, 255, 255, 0.04)) !important;
+    border-color: rgba(192, 132, 252, 0.18) !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row.selected,
+.chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row.focused {
+    background: color-mix(in srgb, #a855f7 22%, rgba(255, 255, 255, 0.08)) !important;
+    border-color: rgba(192, 132, 252, 0.35) !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-list-icon {
+    color: #c084fc !important;
+    font-size: 13.5px !important;
+    margin-right: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 
 .chat-artifacts-widget .chat-artifacts-list-label {
-    font-size: 11px !important;
+    font-size: 11.5px !important;
     color: var(--vscode-foreground, #e2e8f0) !important;
     font-weight: 500 !important;
+    text-overflow: ellipsis !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
 }
 
 .chat-artifacts-widget .chat-artifacts-list-description {
     font-size: 10px !important;
     color: var(--vscode-descriptionForeground, #94a3b8) !important;
+    margin-left: 8px !important;
+    padding: 1px 6px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 3px !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
-.chat-artifacts-widget .chat-artifacts-list-icon {
-    color: #c084fc !important;
+.chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row:hover .chat-artifacts-list-description {
+    background: rgba(192, 132, 252, 0.12) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(192, 132, 252, 0.2) !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-list-actions .monaco-action-bar .action-item .action-label {
+    border-radius: 4px !important;
+    padding: 2px 4px !important;
+    color: var(--vscode-icon-foreground, #94a3b8) !important;
+    transition: color 0.15s ease, background-color 0.15s ease !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-list-actions .monaco-action-bar .action-item .action-label:hover {
+    color: #f1f5f9 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
 }
 
 
