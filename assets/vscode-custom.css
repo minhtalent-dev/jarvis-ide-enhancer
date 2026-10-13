@@ -491,5 +491,72 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     color: var(--vscode-foreground, #e2e8f0) !important;
 }
 
+/* ==========================================================================
+   Bespoke Glassmorphism Styling cho Chat Artifacts Widget (.chat-artifacts-*)
+   ========================================================================== */
+
+/* 1. Khung chứa Artifacts Widget phía trên ô chat input */
+.interactive-session .interactive-input-part .chat-artifacts-widget-container {
+    margin-bottom: 6px !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+}
+
+/* 2. Thẻ Artifacts Widget chính */
+.chat-artifacts-widget {
+    border-radius: 8px !important;
+    background: color-mix(in srgb, var(--vscode-editorWidget-background, #181825) 85%, transparent) !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    border: 1px solid var(--vscode-editorWidget-border, rgba(255, 255, 255, 0.12)) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+    padding: 4px 8px !important;
+    transition: all 0.2s ease !important;
+}
+
+/* 3. Thanh tiêu đề mở rộng Artifacts */
+.chat-artifacts-widget .chat-artifacts-expand .monaco-button {
+    border-radius: 6px !important;
+    padding: 3px 6px !important;
+    transition: background-color 0.15s ease !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-expand .monaco-button:hover {
+    background-color: rgba(192, 132, 252, 0.12) !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-title-section {
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    color: var(--vscode-foreground, #e2e8f0) !important;
+}
+
+/* 4. Từng dòng danh sách Artifact */
+.chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row {
+    border-radius: 6px !important;
+    margin: 1px 0 !important;
+    transition: background-color 0.12s ease !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row:hover {
+    background-color: rgba(192, 132, 252, 0.14) !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-list-label {
+    font-size: 11px !important;
+    color: var(--vscode-foreground, #e2e8f0) !important;
+    font-weight: 500 !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-list-description {
+    font-size: 10px !important;
+    color: var(--vscode-descriptionForeground, #94a3b8) !important;
+}
+
+.chat-artifacts-widget .chat-artifacts-list-icon {
+    color: #c084fc !important;
+}
+
+
 
 

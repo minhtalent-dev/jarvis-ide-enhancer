@@ -2,6 +2,13 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.37] - 2026-10-12
+
+### Added
+- **Mở khóa tính năng Chat Artifacts Panel (Option 1):** Tự động bóc tách các kế hoạch triển khai (`**/*plan*.md`), nhiệm vụ (`**/TASK_*.md`), cấu hình JSON và ảnh chụp thành các nhóm Artifact riêng biệt hiển thị trực quan ngay trên ô chat, tương tự như trải nghiệm Claude Artifacts.
+- **Bộ thông điệp suy nghĩ độc quyền của JARVIS (Option 3):** Tùy biến toàn bộ câu chữ trạng thái suy nghĩ của Agent AI thành các khẩu hiệu phân tích kiến trúc, kiểm toán an toàn và lập kế hoạch chuyên nghiệp bằng tiếng Việt.
+- **Bespoke Glassmorphism Styling cho Chat Artifacts Widget:** Thiết kế bo góc mềm mại, hiệu ứng kính mờ `backdrop-filter: blur(16px)` và viền mờ cao cấp cho danh sách Artifacts.
+
 ## [1.1.36] - 2026-10-12
 
 ### Refactored

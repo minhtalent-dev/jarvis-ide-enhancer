@@ -411,6 +411,45 @@ async function syncSetup(context, silent = false) {
         await config.update('workbench.reduceMotion', 'off', vscode.ConfigurationTarget.Global);
         await config.update('sessions.chatTimeline.display', 'ruler', vscode.ConfigurationTarget.Global);
         await config.update('chat.promptTimeline', 'ruler', vscode.ConfigurationTarget.Global);
+
+        // Kích hoạt tính năng Chat Artifacts Panel (Option 1)
+        await config.update('chat.artifacts.enabled', true, vscode.ConfigurationTarget.Global);
+        await config.update('chat.artifacts.rules.byFilePath', {
+            "**/*plan*.md": { "groupName": "Kế hoạch Triển khai (Plans)" },
+            "**/TASK_*.md": { "groupName": "Nhiệm vụ (Tasks)" },
+            "**/*.json": { "groupName": "Dữ liệu Cấu hình (Configs)" }
+        }, vscode.ConfigurationTarget.Global);
+        await config.update('chat.artifacts.rules.byMimeType', {
+            "image/*": { "groupName": "Ảnh chụp (Screenshots)", "onlyShowGroup": true }
+        }, vscode.ConfigurationTarget.Global);
+
+        // Tùy biến bộ thông điệp suy nghĩ độc quyền của JARVIS (Option 3)
+        await config.update('chat.agent.thinking.phrases', {
+            "mode": "replace",
+            "phrases": [
+                "JARVIS đang tính toán... Xin đừng rút phích cắm vào lúc này.",
+                "Đang quét toàn bộ vũ trụ code để tìm dòng logic hoàn hảo...",
+                "Đang biên dịch lại các nơ-ron... Cà phê của FOUNDER đã nguội chưa?",
+                "Đang phân tích kiến trúc... Bug này không có cửa thoát khỏi radar của JARVIS.",
+                "Đang kích hoạt lò phản ứng hồ quang để đốt cháy đống nợ kỹ thuật...",
+                "Hệ thống đang suy nghĩ ở tốc độ ánh sáng, xin FOUNDER chờ trong giây lát...",
+                "Đang quét Ma trận Bán kính Ảnh hưởng... Độ an toàn đang tiệm cận 100%.",
+                "Đang thương lượng hòa bình với bộ biên dịch...",
+                "Đang tải dữ liệu từ máy chủ... CPU đang ấm dần lên.",
+                "Đang tối ưu hóa mã nguồn... Đẹp đến mức linter cũng phải rơi nước mắt.",
+                "Đang dọn dẹp các dòng code phức tạp quá mức cần thiết...",
+                "Thuật toán đang chạy đua với thời gian của FOUNDER...",
+                "Đang triệu hồi các gói thư viện tối ưu nhất trong không gian mạng...",
+                "Đang kiểm toán an toàn đa luồng... Tuyệt đối không cho phép deadlock xảy ra.",
+                "Đang kiểm tra lại từng biến số... Một lỗi chính tả cũng không thể lọt lưới.",
+                "Đang lập kế hoạch tác chiến không điểm mù...",
+                "Hệ thống đang phân tích logic... Nhanh hơn cả Tony Stark mặc giáp.",
+                "Đang giải mã bài toán hóc búa này theo chuẩn Clean Code...",
+                "Đang rà soát các góc khuất của mã nguồn trước khi bàn giao...",
+                "JARVIS sắp hoàn tất... Giải pháp này sẽ mượt mà như nhung."
+            ]
+        }, vscode.ConfigurationTarget.Global);
+
         if (logger) logger.info('Cập nhật cấu hình settings.json thành công.');
 
         try {
