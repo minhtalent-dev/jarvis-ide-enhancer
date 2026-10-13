@@ -2,6 +2,11 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.38] - 2026-10-13
+
+### Improved
+- **Tối ưu hiển thị khối mã và phản hồi trong khung chat:** Tự động phát hiện và loại bỏ các khung mã rỗng không có nội dung, bảo toàn nguyên vẹn 100% các đoạn mã thực tế và các công cụ thực thi lệnh, giúp giao diện hội thoại luôn gọn gàng, liền mạch và chuyên nghiệp.
+
 ## [1.1.37] - 2026-10-12
 
 ### Added

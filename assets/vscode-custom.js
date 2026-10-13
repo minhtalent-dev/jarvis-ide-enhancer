@@ -745,59 +745,71 @@
     }
 
     /**
-     * Triệt tiêu viền khung output khi terminal không có stdout
-     * Tuyệt đối bảo toàn hiển thị khi terminal có output thực tế
+     * Triệt tiêu Code Block rỗng trong Chat Markdown response
+     * Bảo toàn 100% khi Code Block có nội dung code thực tế
      */
-    function evaluateEmptyToolElements(rootNode) {
+    function evaluateEmptyCodeBlockElements(rootNode) {
         if (!rootNode || typeof document === 'undefined') return;
 
-        const selector = '.chat-terminal-output-container';
-        const targets = rootNode.querySelectorAll ? Array.from(rootNode.querySelectorAll(selector)) : [];
+        const selector = '.interactive-result-code-block, div[data-code]';
+        const rawTargets = rootNode.querySelectorAll ? Array.from(rootNode.querySelectorAll(selector)) : [];
         if (rootNode.matches && rootNode.matches(selector)) {
-            targets.push(rootNode);
+            rawTargets.push(rootNode);
         }
 
-        for (const el of targets) {
-            // 1. Nếu terminal đang chạy hoặc có loading indicator -> giữ nguyên
-            if (el.querySelector && el.querySelector('.codicon-loading, [class*="progress"], .chat-terminal-running-spinner')) {
-                el.classList.remove('chat-terminal-output-container-no-output');
-                continue;
-            }
-
-            // 2. Kiểm tra xem có output thực tế không:
-            // Xterm.js render lên canvas; hoặc có xterm-rows, pre, code, command-output
-            const hasCanvasOrRows = el.querySelector && el.querySelector(
-                '.xterm canvas, .xterm-screen canvas, .xterm-rows span, pre code, .chat-terminal-command-output'
-            );
-            if (hasCanvasOrRows) {
-                el.classList.remove('chat-terminal-output-container-no-output');
-                continue;
-            }
-
-            // 3. Kiểm tra xem có text thực tế trong terminal buffer không
-            const outputEl = el.querySelector ? el.querySelector(
-                '.chat-terminal-output-terminal, .chat-terminal-output-content, pre'
-            ) : null;
-            if (outputEl) {
-                const text = (outputEl.textContent || '')
-                    .replace(/\u001b(?:\[[0-9;?]*[a-zA-Z]|\][^\u0007\u001b]*(?:\u0007|\u001b\\)?)/g, '')
-                    .replace(/[\u200B-\u200D\uFEFF]/g, '')
-                    .trim();
-                if (text !== '' && text !== 'No output was produced by the command.') {
-                    el.classList.remove('chat-terminal-output-container-no-output');
-                    continue;
+        const codeBlocks = new Set();
+        for (const el of rawTargets) {
+            if (el.classList && el.classList.contains('interactive-result-code-block')) {
+                codeBlocks.add(el);
+            } else {
+                const innerBlock = el.querySelector ? el.querySelector('.interactive-result-code-block') : null;
+                if (innerBlock) {
+                    codeBlocks.add(innerBlock);
                 }
             }
+        }
 
-            // 4. Chỉ khi VS Code core xác nhận no-output HOẶC thông báo empty có nội dung rõ ràng
-            const emptyEl = el.querySelector ? el.querySelector('.chat-terminal-output-empty') : null;
-            const emptyText = emptyEl ? (emptyEl.textContent || '').trim() : '';
-            const isCoreNoOutput = el.querySelector && el.querySelector('.chat-terminal-output-terminal-no-output');
+        const clearEmptyFlags = (codeBlockEl, parentWrapper) => {
+            if (codeBlockEl && codeBlockEl.classList) {
+                codeBlockEl.classList.remove('jarvis-empty-codeblock-hidden');
+            }
+            if (parentWrapper && parentWrapper.classList) {
+                parentWrapper.classList.remove('jarvis-empty-codeblock-hidden');
+            }
+        };
 
-            if (emptyText === 'No output was produced by the command.' || (isCoreNoOutput && !hasCanvasOrRows)) {
-                el.classList.add('chat-terminal-output-container-no-output');
-            } else {
-                el.classList.remove('chat-terminal-output-container-no-output');
+        for (const block of codeBlocks) {
+            const wrapper = block.closest ? block.closest('div[data-code]') : (block.parentElement && block.parentElement.hasAttribute('data-code') ? block.parentElement : null);
+
+            // Lớp 1 (Guard Initializing): Chưa có .monaco-editor -> Bỏ qua, đang khởi tạo
+            const monacoEditor = block.querySelector ? block.querySelector('.monaco-editor') : null;
+            if (!monacoEditor) {
+                clearEmptyFlags(block, wrapper);
+                continue;
+            }
+
+            // Lớp 2 (Guard Real Data): Đọc text trong .interactive-result-editor .view-lines hoặc .monaco-editor
+            const viewLines = monacoEditor.querySelector ? monacoEditor.querySelector('.view-lines') : null;
+            const targetTextEl = viewLines || monacoEditor;
+            const rawText = targetTextEl ? (targetTextEl.textContent || '') : '';
+
+            // Lọc escape code, zero-width chars, whitespace và \u00a0 (&nbsp;)
+            const cleanText = rawText
+                .replace(/\u001b(?:\[[0-9;?]*[a-zA-Z]|\][^\u0007\u001b]*(?:\u0007|\u001b\\)?)/g, '')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .replace(/\u00a0/g, ' ')
+                .trim();
+
+            if (cleanText.length > 0) {
+                // Có code thật -> gỡ sạch cờ rỗng
+                clearEmptyFlags(block, wrapper);
+                continue;
+            }
+
+            // Lớp 3 (Confirmed Empty): Text rỗng hoàn toàn -> gán class ẩn
+            block.classList.add('jarvis-empty-codeblock-hidden');
+            if (wrapper && wrapper.classList) {
+                wrapper.classList.add('jarvis-empty-codeblock-hidden');
             }
         }
     }
@@ -814,7 +826,7 @@
             if (shouldScan) {
                 scanAndDecorateHistory();
                 if (document.body) {
-                    evaluateEmptyToolElements(document.body);
+                    evaluateEmptyCodeBlockElements(document.body);
                 }
             }
         });
@@ -824,7 +836,7 @@
             if (target) {
                 historyObserver.observe(target, { childList: true, subtree: true });
                 scanAndDecorateHistory();
-                evaluateEmptyToolElements(document.body || target);
+                evaluateEmptyCodeBlockElements(document.body || target);
                 findAndAttachChatEditor();
             }
         };
@@ -843,7 +855,7 @@
     if (typeof setInterval !== 'undefined') {
         setInterval(() => {
             if (typeof document !== 'undefined' && document.body) {
-                evaluateEmptyToolElements(document.body);
+                evaluateEmptyCodeBlockElements(document.body);
             }
         }, 600);
     }
