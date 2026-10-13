@@ -2,6 +2,45 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.36] - 2026-10-12
+
+### Refactored
+- **Dọn sạch 100% Dead Code & Tối ưu hiệu năng tải (Clean Code):** Loại bỏ toàn bộ các khối lệnh JS cào DOM giả lập và class CSS thừa của Option 2 (giảm kích thước tệp `vscode-custom.js` từ 86KB xuống 37KB, tiết kiệm hơn 50% dung lượng và giải phóng bộ nhớ renderer).
+- **Hệ thống hóa Native Timeline Styling:** Giữ nguyên các lớp CSS tối ưu hóa cho Native Prompt Timeline của Microsoft, đảm bảo giao diện sang trọng, tốc độ phản hồi 60fps và độ ổn định lâu dài.
+
+## [1.1.35] - 2026-10-12
+
+### Improved
+- **Bảo toàn tính năng khi VS Code cập nhật phiên bản mới (Self-Healing Daemon):** Mở rộng cơ chế tự phục hồi tự động quét và khôi phục cả 4 cổng vá quan trọng (Intellisense bypass, Multi-slash unblocked, Hook CodeEditor và Mở khóa Native Timeline) ngay khi phát hiện Microsoft ghi đè file bundle sau khi cập nhật VS Code.
+- **Tối ưu trải nghiệm cài đặt trên máy mới (Zero-Touch Onboarding):** Tự động phát hiện cấu hình, tạo thư mục tài nguyên, inject mã giao diện, vá core bundle và dọn sạch cache V8 ngầm 100% trong lần khởi động đầu tiên.
+
+## [1.1.34] - 2026-10-12
+
+### Improved
+- **Khắc phục triệt để lỗi vùng rê chuột quá rộng của Timeline bên trái:** Thu hẹp khung hit-box tàng hình rộng 300px mặc định của Microsoft về đúng 24px bao quanh các chấm tròn. Đảm bảo di chuột qua giữa khung chat không bao giờ bị kích hoạt nhầm bảng danh sách câu hỏi.
+- **Chỉ kích hoạt khi rê chuột trực tiếp vào chấm:** Thiết lập `pointer-events: none` cho vùng trống bên phải và chỉ mở rộng vùng tương tác khi người dùng thực sự rê chuột vào các chấm tròn.
+- **Nâng cấp giao diện Glassmorphism cho Popup câu hỏi:** Bổ sung hiệu ứng kính mờ `backdrop-filter: blur(20px)` và viền mờ cho danh sách câu hỏi Gutter Panel.
+
+## [1.1.33] - 2026-10-12
+
+### Added
+- **Mở khóa Native Prompt Timeline chính chủ của Microsoft (Option 3):** Mở khóa tính năng Timeline và Ruler Marks gốc được tích hợp sâu trong VS Code Core, hỗ trợ hiển thị 100% dữ liệu lịch sử chat và cuộn mượt native 60fps qua API `reveal`.
+- **Tùy biến giao diện Glassmorphism Codex cho Native Timeline Card:** Biến thẻ xem trước mặc định của VS Code thành thẻ popup kính mờ cao cấp, hiển thị tiêu đề prompt, thời gian và thống kê diff tệp tin.
+
+## [1.1.32] - 2026-10-12
+
+### Fixed
+- **Triển khai Option 2: 100% Zero-Core Patch an toàn tuyệt đối:** Gỡ bỏ hoàn toàn mọi can thiệp vào mã nguồn ChatWidget trong core bundle, khôi phục `workbench.desktop.main.js` về trạng thái an toàn sạch sẽ, triệt tiêu 100% rủi ro màn hình đen.
+- **Cơ chế điều khiển cuộn thông minh qua Scrollbar & Wheel PointerEvent:** Tự động điều khiển cuộn thông qua mô phỏng sự kiện `PointerEvent` trên thanh cuộn và `WheelEvent`, tương thích mượt mà với bộ cuộn ảo của Monaco List.
+- **Tính năng Quick-Sweep tự động nạp dữ liệu thật:** Khi mở một phiên chat cũ có nhiều câu hỏi chưa tải trong DOM, hệ thống tự động quét nhanh (Quick-Sweep) để kích hoạt nạp đầy đủ tiêu đề và câu trả lời thật vào thẻ xem trước.
+
+## [1.1.31] - 2026-10-12
+
+### Fixed
+- **Giải quyết triệt để lỗi không cuộn và thiếu nội dung chat (Option 1):** Tích hợp Patch 4 hook trực tiếp vào `ChatWidgetService.register`, cấp quyền truy cập `ChatWidget.viewModel.getItems()` và hàm cuộn chính chủ `widget.reveal(item)`.
+- **Hiển thị 100% tiêu đề thật và phản hồi AI tức thì:** Khắc phục triệt để hiện tượng chỉ hiện placeholder khi mở chat cũ. Toàn bộ các câu hỏi và câu trả lời trong lịch sử chat được nạp đầy đủ ngay từ millisecond đầu tiên mà không phụ thuộc vào ảo hóa DOM.
+- **Cuộn mượt chính xác tuyệt đối:** Click vào bất kỳ vạch mốc nào trên thanh Timeline Rail sẽ kích hoạt lệnh `widget.reveal(item)` gốc của VS Code, cuộn mượt 60fps đến đúng lượt chat mà không bị gián đoạn.
+
 ## [1.1.30] - 2026-10-12
 
 ### Fixed

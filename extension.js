@@ -409,6 +409,8 @@ async function syncSetup(context, silent = false) {
         await config.update('chat.requestQueuing.defaultAction', 'queue', vscode.ConfigurationTarget.Global);
         await config.update('editor.cursorSmoothCaretAnimation', 'on', vscode.ConfigurationTarget.Global);
         await config.update('workbench.reduceMotion', 'off', vscode.ConfigurationTarget.Global);
+        await config.update('sessions.chatTimeline.display', 'ruler', vscode.ConfigurationTarget.Global);
+        await config.update('chat.promptTimeline', 'ruler', vscode.ConfigurationTarget.Global);
         if (logger) logger.info('Cập nhật cấu hình settings.json thành công.');
 
         try {
@@ -568,8 +570,9 @@ async function patchIntellisense(silent = false) {
         const isTmePatched = content.includes('function Pge(s,o){return!0}') || content.includes('function Tme(s,o){return!0}') || /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{return!0\}/.test(content);
         const isMultiSlashSuggestPatched = !content.includes('.parsedInput.parts.find(w=>w instanceof Pm)') && !content.includes('.parsedInput.parts.find(C=>C instanceof Pm)');
         const isAddCodeEditorPatched = content.includes('window.__codeEditorService=this');
+        const isPromptTimelinePatched = content.includes('function wTn(s){return!s.rendersInputOnTop}') && content.includes('this.configurationService.getValue(eRt)||"ruler"');
 
-        if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched) {
+        if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched && isPromptTimelinePatched) {
             if (logger) logger.info('Core đã có đầy đủ patch, bỏ qua việc sửa file bundle.');
             // Vẫn tự động dọn dẹp cache V8 để tránh tình trạng bytecode cũ bị kẹt
             autoPurgeV8Cache();
@@ -607,12 +610,27 @@ async function patchIntellisense(silent = false) {
             );
         }
 
+        // Patch 4: Mở khóa Native Prompt Timeline của Microsoft
+        const tWtn = 'function wTn(s){return s.location==="panel"&&!s.rendersInputOnTop}';
+        if (content.includes(tWtn)) {
+            content = content.replace(tWtn, 'function wTn(s){return!s.rendersInputOnTop}');
+            if (logger) logger.info('Đã mở khóa wTn cho Timeline chạy ở cả Sidebar và Panel.');
+        }
+
+        const tSessionWindow = 'this.environmentService.isSessionsWindow?this.configurationService.getValue(eRt):"off"';
+        if (content.includes(tSessionWindow)) {
+            content = content.replace(tSessionWindow, 'this.configurationService.getValue(eRt)||"ruler"');
+            if (logger) logger.info('Đã mở khóa PromptTimelineFeature cho mọi cửa sổ chat.');
+        }
+
         // Kiểm tra an toàn trước khi ghi: Snippet-Validation & Tính toàn vẹn tệp
         try {
             // 1. Kiểm tra cú pháp V8 trực tiếp của các đoạn mã được vá
             new vm.Script('function _test(s,o){return!0}');
             new vm.Script(`(function(e,t){\nthis.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e.inputEditor}))}catch(err){}this.codeEditorService=t;\n})`);
             new vm.Script(`(function(e){\ntry{window.__codeEditorService=this;window.__allCodeEditors=window.__allCodeEditors||[];window.__allCodeEditors.push(e);let _d=e.getContainerDomNode&&e.getContainerDomNode();if(_d){_d.__monacoEditor=e;setTimeout(()=>{try{if(_d.closest&&_d.closest('.interactive-input-part,.chat-input-editor,.interactive-input-editor,.chat-input-widget')){window.__chatInputEditor=e;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e}))}}catch(_){}},50)}}catch(_){}\n})`);
+            new vm.Script('function wTn(s){return!s.rendersInputOnTop}');
+            new vm.Script('(function(eRt){\nlet e = this.configurationService.getValue(eRt)||"ruler";\n})');
 
             // 2. Kiểm tra tính toàn vẹn tệp (chống ghi đè rỗng hoặc hỏng file)
             if (!content || content.length < 5000000) {
@@ -688,7 +706,8 @@ async function runSelfHealingDaemon(context) {
                                  /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{return!0\}/.test(jsContent);
             const isMultiSlashSuggestPatched = !jsContent.includes('.parsedInput.parts.find(w=>w instanceof Pm)') && !jsContent.includes('.parsedInput.parts.find(C=>C instanceof Pm)');
             const isAddCodeEditorPatched = jsContent.includes('window.__codeEditorService=this');
-            isJsPatched = isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched;
+            const isPromptTimelinePatched = jsContent.includes('function wTn(s){return!s.rendersInputOnTop}') && jsContent.includes('this.configurationService.getValue(eRt)||"ruler"');
+            isJsPatched = isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched && isPromptTimelinePatched;
         }
 
         if (fs.existsSync(htmlPath)) {

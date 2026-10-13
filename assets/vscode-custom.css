@@ -340,187 +340,156 @@ div[class*="request"] .rendered-markdown .custom-backtick-pill,
 }
 
 /* ==========================================================================
-   JARVIS Chat Timeline Minimap & Hover Preview Card (Codex Style)
+   Bespoke Luxury Styling cho Microsoft Native Prompt Timeline (.prompt-timeline)
    ========================================================================== */
-.jarvis-chat-timeline-rail {
-    position: absolute;
-    right: 14px;
-    top: 40px;
-    bottom: 85px;
-    width: 18px;
-    pointer-events: none;
-    z-index: 45;
+
+/* 1. Mở khoảng đệm an toàn cho tin nhắn chat để không bị thanh rail đè */
+.prompt-timeline-host.prompt-timeline-with-rail.interactive-session .interactive-item-container,
+.prompt-timeline-host.prompt-timeline-with-rail .interactive-item-container,
+.prompt-timeline-with-rail .monaco-list-row {
+    padding-right: calc(var(--prompt-timeline-rail-width, 36px) + 8px) !important;
 }
 
-/* Đường track dọc thanh mảnh */
-.jarvis-timeline-track {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 1px;
-    background-color: rgba(255, 255, 255, 0.08);
-    pointer-events: none;
-    z-index: 1;
+/* 2. Thanh ray Native Timeline */
+.prompt-timeline-rail {
+    display: block !important;
+    right: 14px !important;
+    pointer-events: auto !important;
+    z-index: 35 !important;
 }
 
-/* Vạch gradient tím neon mảnh 2px trượt dọc track */
-.jarvis-timeline-viewport-indicator {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 10px;
-    height: 2px !important;
-    border-radius: 1px;
-    background: linear-gradient(90deg, #c084fc, #a855f7);
-    box-shadow: 0 0 6px rgba(192, 132, 252, 0.8), 0 0 10px rgba(192, 132, 252, 0.4);
-    pointer-events: none;
-    z-index: 2;
-    transition: top 0.08s ease-out;
+/* 3. Vạch mốc Native Ruler Marks */
+.prompt-timeline-ruler-marks {
+    display: flex !important;
+    flex-direction: column !important;
 }
 
-/* Vạch tick timeline */
-.jarvis-timeline-tick {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 8px;
-    height: 2px;
-    border-radius: 1px;
-    background-color: rgba(255, 255, 255, 0.3);
-    pointer-events: auto;
-    cursor: pointer;
-    transition: width 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-    z-index: 3;
+.prompt-timeline-ruler-mark {
+    background-color: var(--vscode-scrollbarSlider-background, rgba(255, 255, 255, 0.28)) !important;
+    border-radius: 2px !important;
+    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
-/* Mở rộng vùng cảm ứng chuột vô hình qua ::before (hit area: top/bottom -6px, left/right -8px) */
-.jarvis-timeline-tick::before {
-    content: "";
-    position: absolute;
-    top: -6px;
-    bottom: -6px;
-    left: -8px;
-    right: -8px;
-    pointer-events: auto;
+.prompt-timeline-ruler-mark:hover {
+    background-color: #c084fc !important;
+    transform: scaleX(1.4) !important;
+    box-shadow: 0 0 6px rgba(192, 132, 252, 0.6) !important;
 }
 
-/* Khi :hover: mở rộng thành 14px, đổi màu tím neon #c084fc kèm glow tỏa sáng */
-.jarvis-timeline-tick:hover {
-    width: 14px;
-    background-color: #c084fc;
-    box-shadow: 0 0 8px rgba(192, 132, 252, 0.85), 0 0 14px rgba(192, 132, 252, 0.45);
+/* 4. Thẻ xem trước Native Prompt Timeline Card - Glassmorphism Codex */
+.prompt-timeline-card {
+    right: 42px !important;
+    width: 290px !important;
+    border-radius: 10px !important;
+    background: color-mix(in srgb, var(--vscode-editorWidget-background, #181825) 85%, transparent) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 1px solid var(--vscode-editorWidget-border, rgba(255, 255, 255, 0.12)) !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    padding: 12px 14px !important;
+    box-sizing: border-box !important;
 }
 
-/* Khi .active: rộng 12px, màu accent #89b4fa */
-.jarvis-timeline-tick.active {
-    width: 12px;
-    background-color: #89b4fa;
-    box-shadow: 0 0 6px rgba(137, 180, 250, 0.6);
+.prompt-timeline-card-head {
+    padding: 0 !important;
 }
 
-.jarvis-timeline-tick.active:hover {
-    width: 14px;
-    background-color: #c084fc;
-    box-shadow: 0 0 8px rgba(192, 132, 252, 0.85), 0 0 14px rgba(192, 132, 252, 0.45);
+.prompt-timeline-card-text {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: var(--vscode-foreground, #e2e8f0) !important;
+    line-height: 1.4 !important;
+    margin-bottom: 6px !important;
 }
 
-/* Thẻ Hover Card chuẩn Codex */
-.jarvis-timeline-card {
-    position: absolute;
-    right: 28px;
-    width: 280px;
-    border-radius: 8px;
-    padding: 10px 12px;
-    box-sizing: border-box;
-    font-family: var(--vscode-font-family);
-    background: color-mix(in srgb, var(--vscode-editorWidget-background, #181825) 86%, transparent);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid var(--vscode-editorWidget-border, rgba(255, 255, 255, 0.12));
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
-    opacity: 0;
-    transform: translateX(8px) scale(0.98);
-    transition: opacity 0.15s ease, transform 0.15s ease;
-    pointer-events: none;
-    z-index: 100;
+.prompt-timeline-card-meta {
+    font-size: 11px !important;
+    color: var(--vscode-descriptionForeground, #94a3b8) !important;
+    margin-bottom: 6px !important;
 }
 
-.jarvis-timeline-card.visible {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-    pointer-events: auto;
+.prompt-timeline-card-diff-action {
+    background: rgba(192, 132, 252, 0.12) !important;
+    color: #d8b4fe !important;
+    border-radius: 6px !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    border: 1px solid rgba(192, 132, 252, 0.25) !important;
 }
 
-.jarvis-timeline-card-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 6px;
+/* ==========================================================================
+   Tối ưu Hit-box Gutter Timeline (Chấm tròn bên trái):
+   Triệt tiêu hit-box tàng hình 300px - CHỈ hiện khi hover trực tiếp vào chấm!
+   ========================================================================== */
+
+/* 1. Thu hẹp triệt để container tàng hình 300px của Microsoft khi chưa rê chuột vào chấm */
+nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
+.prompt-timeline-rail.prompt-timeline-rail-gutter:not(.revealed) {
+    width: 24px !important;
+    pointer-events: none !important;
+    overflow: visible !important;
 }
 
-.jarvis-timeline-card-title {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--vscode-foreground, #e2e8f0);
-    line-height: 1.35;
-    flex: 1;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    word-break: break-word;
+/* 2. Chỉ phần tử chứa các chấm tròn (.prompt-timeline-gutter-rest) mới bắt sự kiện chuột ban đầu */
+.prompt-timeline-rail-gutter .prompt-timeline-gutter-rest {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    padding: 8px 4px !important;
+    border-radius: 12px !important;
+    transition: background-color 0.15s ease !important;
 }
 
-.jarvis-timeline-card-bookmark {
-    flex-shrink: 0;
-    color: var(--vscode-descriptionForeground, rgba(255, 255, 255, 0.45));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 1px;
+.prompt-timeline-rail-gutter .prompt-timeline-gutter-rest:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-.jarvis-timeline-card-bookmark svg {
-    display: block;
-    width: 14px;
-    height: 14px;
-    opacity: 0.75;
+/* Điểm nhấn chấm tròn khi active / hover */
+.prompt-timeline-gutter-dot.active {
+    background-color: #c084fc !important;
+    box-shadow: 0 0 6px rgba(192, 132, 252, 0.7) !important;
 }
 
-.jarvis-timeline-card-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 6px;
+.prompt-timeline-gutter-dot:hover {
+    background-color: #89b4fa !important;
+    transform: scale(1.6) !important;
 }
 
-.jarvis-timeline-card-badge {
-    font-size: 10px;
-    font-weight: 600;
-    line-height: 1;
-    padding: 2px 6px;
-    border-radius: 10px;
-    background-color: var(--vscode-badge-background, rgba(192, 132, 252, 0.18));
-    color: var(--vscode-badge-foreground, #c084fc);
-    letter-spacing: 0.3px;
+/* 3. Khi đã chạm vào chấm và panel mở ra (.revealed): mở rộng hit-box vừa đủ để tương tác danh sách câu hỏi */
+.prompt-timeline-rail.prompt-timeline-rail-gutter.revealed {
+    width: 340px !important;
+    pointer-events: auto !important;
 }
 
-.jarvis-timeline-card-time {
-    font-size: 10px;
-    color: var(--vscode-descriptionForeground, #999999);
+/* 4. Tùy biến popup danh sách câu hỏi Gutter Panel chuẩn Glassmorphism Codex */
+.prompt-timeline-gutter-panel {
+    border-radius: 10px !important;
+    background: color-mix(in srgb, var(--vscode-editorWidget-background, #181825) 86%, transparent) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 1px solid var(--vscode-editorWidget-border, rgba(255, 255, 255, 0.14)) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    padding: 6px !important;
+    box-sizing: border-box !important;
 }
 
-.jarvis-timeline-card-snippet {
-    font-size: 11px;
-    line-height: 1.45;
-    color: var(--vscode-descriptionForeground, #94a3b8);
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    word-break: break-word;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    padding-top: 6px;
+.prompt-timeline-gutter-row {
+    border-radius: 6px !important;
+    transition: background-color 0.12s ease !important;
 }
+
+.prompt-timeline-gutter-row:hover {
+    background-color: rgba(192, 132, 252, 0.12) !important;
+}
+
+.prompt-timeline-gutter-row.active {
+    background-color: rgba(192, 132, 252, 0.18) !important;
+}
+
+.prompt-timeline-gutter-row-label {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: var(--vscode-foreground, #e2e8f0) !important;
+}
+
+
 
