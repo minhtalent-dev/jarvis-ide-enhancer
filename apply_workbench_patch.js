@@ -4,7 +4,7 @@ const os = require('os');
 const vm = require('vm');
 
 function getJsPath() {
-    const fixedPath = 'C:\\Users\\mes\\AppData\\Local\\Programs\\Microsoft VS Code\\2a59476c9b\\resources\\app\\out\\vs\\workbench\\workbench.desktop.main.js';
+    const fixedPath = 'C:\\Users\\mes\\AppData\\Local\\Programs\\Microsoft VS Code\\7baac39ec3\\resources\\app\\out\\vs\\workbench\\workbench.desktop.main.js';
     if (fs.existsSync(fixedPath)) return fixedPath;
     const baseDir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Programs', 'Microsoft VS Code');
     if (fs.existsSync(baseDir)) {
@@ -38,10 +38,18 @@ if (!fs.existsSync(bakPath)) {
 
 let content = fs.readFileSync(jsPath, 'utf8');
 
-const isTmePatched = content.includes('function Pge(s,o){return!0}') || content.includes('function Tme(s,o){return!0}') || /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{return!0\}/.test(content);
-const isMultiSlashSuggestPatched = !content.includes('.parsedInput.parts.find(w=>w instanceof Pm)') && !content.includes('.parsedInput.parts.find(C=>C instanceof Pm)');
+const p1Unpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+),\s*([a-zA-Z0-9_$]+)\)\s*\{let\s+[a-zA-Z0-9_$]+=new\s+[A-Za-z0-9_$]+\(1,1,\3\.replace\.startLineNumber,\3\.replace\.startColumn\);[^}]*\}/;
+const pVnUnpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+),\s*([a-zA-Z0-9_$]+),\s*([a-zA-Z0-9_$]+)\)\s*\{if\(\4\.length===0\)return!1;let\s+[a-zA-Z0-9_$]+=\2\.getLineContent\(\3\.lineNumber\)[\s\S]*?\.includes\(["']\/["']\)&&\/[^\/]*\\\/\/\.test\([a-zA-Z0-9_$]+\)\}/;
+const p2Unpatched = /\|\|[a-zA-Z0-9_$]+\.parsedInput\.parts\.find\([a-zA-Z0-9_$]+=>[a-zA-Z0-9_$]+\s+instanceof\s+Pm\)/g;
+const p4aUnpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+)\)\s*\{return\s+\2\.location===["']panel["']&&!\2\.rendersInputOnTop\}/;
+const p4bUnpatched = /this\.environmentService\.isSessionsWindow\s*\?\s*this\.configurationService\.getValue\(([A-Za-z0-9_$]+)\)\s*:\s*["']off["']/;
+
+const isTmePatched = !p1Unpatched.test(content) && !pVnUnpatched.test(content);
+p2Unpatched.lastIndex = 0;
+const isMultiSlashSuggestPatched = !p2Unpatched.test(content);
+p2Unpatched.lastIndex = 0;
 const isAddCodeEditorPatched = content.includes('window.__codeEditorService=this');
-const isPromptTimelinePatched = content.includes('function wTn(s){return!s.rendersInputOnTop}') && content.includes('this.configurationService.getValue(eRt)||"ruler"');
+const isPromptTimelinePatched = !p4aUnpatched.test(content) && !p4bUnpatched.test(content);
 
 if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched && isPromptTimelinePatched) {
     console.log('⚡ Hệ thống đã có đầy đủ 4 bản vá (Intellisense bypass, Multi-slash unblocked, Hook addCodeEditor, Unlock Native Timeline), không cần vá lại.');
@@ -49,21 +57,23 @@ if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched && isPr
 }
 
 try {
-    // 1. Áp dụng Patch 1: Pge/Tme -> return!0
-    if (!isTmePatched) {
-        const p1 = /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{let\s+([a-z])=new\s+([A-Za-z0-9_$]+)\(1,1,\3\.replace\.startLineNumber,\3\.replace\.startColumn\);return!!\2\.getValueInRange\(\4\)\.match\(\/\^\\s\*\$\/\)\}/;
-        if (p1.test(content)) {
-            const m = content.match(p1);
-            console.log(`Patch 1: Phát hiện hàm ${m[1]}(${m[2]},${m[3]}), đang thay thế bằng return!0`);
-            content = content.replace(p1, `function ${m[1]}(${m[2]},${m[3]}){return!0}`);
-        } else if (content.includes('function Tme(s,o){let e=new j')) {
-            content = content.replace(/function Tme\(s,o\)\{[\s\S]*?match\(\/\^\s\*\$\/\)\}/, 'function Tme(s,o){return!0}');
-        }
+    // 1. Áp dụng Patch 1: Whitespace check bypass -> return!0
+    if (p1Unpatched.test(content)) {
+        content = content.replace(p1Unpatched, 'function $1($2,$3){return!0}');
+        console.log('Patch 1: Đã vá whitespace check (Patch 1) thành công.');
+    }
+
+    if (pVnUnpatched.test(content)) {
+        content = content.replace(pVnUnpatched, 'function $1($2,$3,$4){return!0}');
+        console.log('Patch 1b: Đã mở khóa trigger slash command (v_n -> return!0).');
     }
 
     // 2. Áp dụng Patch 2: Gỡ bỏ ||...parsedInput.parts.find(...)
-    console.log('Patch 2: Gỡ bỏ điều kiện chặn gợi ý slash command thứ 2 trở đi...');
-    content = content.replace(/\|\|[a-zA-Z0-9_$]+\.parsedInput\.parts\.find\([a-zA-Z0-9_$]+=>[a-zA-Z0-9_$]+\s+instanceof\s+Pm\)/g, '');
+    p2Unpatched.lastIndex = 0;
+    if (p2Unpatched.test(content)) {
+        content = content.replace(p2Unpatched, '');
+        console.log('Patch 2: Đã mở khóa gợi ý cho slash command thứ 2 trở đi (Patch 2).');
+    }
 
     // 3. Áp dụng Patch 3: Hook addCodeEditor
     if (content.includes('addCodeEditor(') && !content.includes('window.__codeEditorService=this')) {
@@ -75,16 +85,14 @@ try {
     }
 
     // 4. Áp dụng Patch 4: Mở khóa Native Prompt Timeline của Microsoft
-    const tWtn = 'function wTn(s){return s.location==="panel"&&!s.rendersInputOnTop}';
-    if (content.includes(tWtn)) {
-        console.log('Patch 4a: Mở khóa wTn cho phép Timeline chạy ở cả Sidebar và Panel...');
-        content = content.replace(tWtn, 'function wTn(s){return!s.rendersInputOnTop}');
+    if (p4aUnpatched.test(content)) {
+        console.log('Patch 4a: Mở khóa Timeline chạy ở cả Sidebar và Panel (Patch 4a)...');
+        content = content.replace(p4aUnpatched, 'function $1($2){return!$2.rendersInputOnTop}');
     }
 
-    const tSessionWindow = 'this.environmentService.isSessionsWindow?this.configurationService.getValue(eRt):"off"';
-    if (content.includes(tSessionWindow)) {
-        console.log('Patch 4b: Mở khóa PromptTimelineFeature cho mọi cửa sổ chat thường...');
-        content = content.replace(tSessionWindow, 'this.configurationService.getValue(eRt)||"ruler"');
+    if (p4bUnpatched.test(content)) {
+        console.log('Patch 4b: Mở khóa PromptTimelineFeature cho mọi cửa sổ chat thường (Patch 4b)...');
+        content = content.replace(p4bUnpatched, 'this.configurationService.getValue($1)||"gutter"');
     }
 
     // 5. Kiểm tra an toàn: Snippet-Validation & Tính toàn vẹn tệp
@@ -93,7 +101,7 @@ try {
     new vm.Script(`(function(e,t){\nthis.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e.inputEditor}))}catch(err){}this.codeEditorService=t;\n})`);
     new vm.Script(`(function(e){\ntry{window.__codeEditorService=this;window.__allCodeEditors=window.__allCodeEditors||[];window.__allCodeEditors.push(e);let _d=e.getContainerDomNode&&e.getContainerDomNode();if(_d){_d.__monacoEditor=e;setTimeout(()=>{try{if(_d.closest&&_d.closest('.interactive-input-part,.chat-input-editor,.interactive-input-editor,.chat-input-widget')){window.__chatInputEditor=e;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e}))}}catch(_){}},50)}}catch(_){}\n})`);
     new vm.Script('function wTn(s){return!s.rendersInputOnTop}');
-    new vm.Script('(function(eRt){\nlet e = this.configurationService.getValue(eRt)||"ruler";\n})');
+    new vm.Script('(function(eRt){\nlet e = this.configurationService.getValue(eRt)||"gutter";\n})');
 
     if (!content || content.length < 5000000) {
         throw new Error(`File size anomaly (${content ? content.length : 0} bytes)`);
@@ -106,10 +114,13 @@ try {
 
     // 7. Xác minh file chứa cả 4 patch
     const verified = fs.readFileSync(jsPath, 'utf8');
-    const vPatch1 = verified.includes('function Pge(s,o){return!0}') || verified.includes('function Tme(s,o){return!0}') || /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{return!0\}/.test(verified);
-    const vPatch2 = !verified.includes('.parsedInput.parts.find(w=>w instanceof Pm)') && !verified.includes('.parsedInput.parts.find(C=>C instanceof Pm)');
+    p2Unpatched.lastIndex = 0;
+    const vPatch1 = !p1Unpatched.test(verified) && !pVnUnpatched.test(verified);
+    const vPatch2 = !p2Unpatched.test(verified);
     const vPatch3 = verified.includes('window.__codeEditorService=this');
-    const vPatch4 = verified.includes('function wTn(s){return!s.rendersInputOnTop}') && verified.includes('this.configurationService.getValue(eRt)||"ruler"');
+    p4aUnpatched.lastIndex = 0;
+    p4bUnpatched.lastIndex = 0;
+    const vPatch4 = !p4aUnpatched.test(verified) && !p4bUnpatched.test(verified);
 
     console.log('=== KẾT QUẢ XÁC MINH ===');
     console.log('Patch 1 (Pge/Tme return!0):', vPatch1 ? 'THÀNH CÔNG' : 'THẤT BÀI');

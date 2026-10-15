@@ -164,7 +164,7 @@ if (fs.existsSync(srcJs)) {
 
 // 3. Tìm và ghi đè vào workbench.html của VS Code
 function getWorkbenchHtmlPath() {
-    const fixedPath = 'C:\\Users\\mes\\AppData\\Local\\Programs\\Microsoft VS Code\\2a59476c9b\\resources\\app\\out\\vs\\code\\electron-browser\\workbench\\workbench.html';
+    const fixedPath = 'C:\\Users\\mes\\AppData\\Local\\Programs\\Microsoft VS Code\\7baac39ec3\\resources\\app\\out\\vs\\code\\electron-browser\\workbench\\workbench.html';
     if (fs.existsSync(fixedPath)) return fixedPath;
     const baseDir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Programs', 'Microsoft VS Code');
     if (fs.existsSync(baseDir)) {

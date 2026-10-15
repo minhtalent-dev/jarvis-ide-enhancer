@@ -2,6 +2,11 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.39] - 2026-10-14
+
+### Fixed
+- **Tự động thích ứng khi cập nhật phiên bản IDE mới (Zero-Touch Self-Healing):** Nâng cấp cơ chế nhận diện cấu trúc mã nguồn tự động, phân tích thông minh các bản cập nhật của VS Code để luôn duy trì trơn tru các tính năng gợi ý phím tắt, thanh dòng thời gian và phong cách giao diện mà không bị gián đoạn hay phát sinh cảnh báo cấu hình.
+
 ## [1.1.38] - 2026-10-13
 
 ### Improved

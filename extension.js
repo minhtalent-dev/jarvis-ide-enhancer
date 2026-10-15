@@ -404,27 +404,31 @@ async function syncSetup(context, silent = false) {
         const currentImports = config.get('vscode_custom_css.imports') || [];
         const newImports = [uriCss, uriJs];
 
-        await config.update('vscode_custom_css.imports', newImports, vscode.ConfigurationTarget.Global);
-        await config.update('chat.progressBorder.enabled', true, vscode.ConfigurationTarget.Global);
-        await config.update('chat.requestQueuing.defaultAction', 'queue', vscode.ConfigurationTarget.Global);
-        await config.update('editor.cursorSmoothCaretAnimation', 'on', vscode.ConfigurationTarget.Global);
-        await config.update('workbench.reduceMotion', 'off', vscode.ConfigurationTarget.Global);
-        await config.update('sessions.chatTimeline.display', 'ruler', vscode.ConfigurationTarget.Global);
-        await config.update('chat.promptTimeline', 'ruler', vscode.ConfigurationTarget.Global);
+        const safeUpdate = async (section, value) => {
+            try {
+                await config.update(section, value, vscode.ConfigurationTarget.Global);
+            } catch (err) {
+                if (logger) logger.warn(`Không thể cập nhật cấu hình ${section}: ${err.message}`);
+            }
+        };
 
-        // Kích hoạt tính năng Chat Artifacts Panel (Option 1)
-        await config.update('chat.artifacts.enabled', true, vscode.ConfigurationTarget.Global);
-        await config.update('chat.artifacts.rules.byFilePath', {
+        await safeUpdate('vscode_custom_css.imports', newImports);
+        await safeUpdate('chat.progressBorder.enabled', true);
+        await safeUpdate('chat.requestQueuing.defaultAction', 'queue');
+        await safeUpdate('editor.cursorSmoothCaretAnimation', 'on');
+        await safeUpdate('workbench.reduceMotion', 'off');
+        await safeUpdate('sessions.chatTimeline.display', 'gutter');
+        // Tuyệt đối không gọi config.update('chat.promptTimeline') vì đây là key không có trong schema VS Code
+        await safeUpdate('chat.artifacts.enabled', true);
+        await safeUpdate('chat.artifacts.rules.byFilePath', {
             "**/*plan*.md": { "groupName": "Kế hoạch Triển khai (Plans)" },
             "**/TASK_*.md": { "groupName": "Nhiệm vụ (Tasks)" },
             "**/*.json": { "groupName": "Dữ liệu Cấu hình (Configs)" }
-        }, vscode.ConfigurationTarget.Global);
-        await config.update('chat.artifacts.rules.byMimeType', {
+        });
+        await safeUpdate('chat.artifacts.rules.byMimeType', {
             "image/*": { "groupName": "Ảnh chụp (Screenshots)", "onlyShowGroup": true }
-        }, vscode.ConfigurationTarget.Global);
-
-        // Tùy biến bộ thông điệp suy nghĩ độc quyền của JARVIS (Option 3)
-        await config.update('chat.agent.thinking.phrases', {
+        });
+        await safeUpdate('chat.agent.thinking.phrases', {
             "mode": "replace",
             "phrases": [
                 "JARVIS đang tính toán... Xin đừng rút phích cắm vào lúc này.",
@@ -448,7 +452,7 @@ async function syncSetup(context, silent = false) {
                 "Đang rà soát các góc khuất của mã nguồn trước khi bàn giao...",
                 "JARVIS sắp hoàn tất... Giải pháp này sẽ mượt mà như nhung."
             ]
-        }, vscode.ConfigurationTarget.Global);
+        });
 
         if (logger) logger.info('Cập nhật cấu hình settings.json thành công.');
 
@@ -606,14 +610,21 @@ async function patchIntellisense(silent = false) {
 
         let content = fs.readFileSync(jsPath, 'utf8');
 
-        const isTmePatched = content.includes('function Pge(s,o){return!0}') || content.includes('function Tme(s,o){return!0}') || /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{return!0\}/.test(content);
-        const isMultiSlashSuggestPatched = !content.includes('.parsedInput.parts.find(w=>w instanceof Pm)') && !content.includes('.parsedInput.parts.find(C=>C instanceof Pm)');
+        const p1Unpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+),\s*([a-zA-Z0-9_$]+)\)\s*\{let\s+[a-zA-Z0-9_$]+=new\s+[A-Za-z0-9_$]+\(1,1,\3\.replace\.startLineNumber,\3\.replace\.startColumn\);[^}]*\}/;
+        const pVnUnpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+),\s*([a-zA-Z0-9_$]+),\s*([a-zA-Z0-9_$]+)\)\s*\{if\(\4\.length===0\)return!1;let\s+[a-zA-Z0-9_$]+=\2\.getLineContent\(\3\.lineNumber\)[\s\S]*?\.includes\(["']\/["']\)&&\/[^\/]*\\\/\/\.test\([a-zA-Z0-9_$]+\)\}/;
+        const p2Unpatched = /\|\|[a-zA-Z0-9_$]+\.parsedInput\.parts\.find\([a-zA-Z0-9_$]+=>[a-zA-Z0-9_$]+\s+instanceof\s+Pm\)/g;
+        const p4aUnpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+)\)\s*\{return\s+\2\.location===["']panel["']&&!\2\.rendersInputOnTop\}/;
+        const p4bUnpatched = /this\.environmentService\.isSessionsWindow\s*\?\s*this\.configurationService\.getValue\(([A-Za-z0-9_$]+)\)\s*:\s*["']off["']/;
+
+        const isTmePatched = !p1Unpatched.test(content) && !pVnUnpatched.test(content);
+        p2Unpatched.lastIndex = 0;
+        const isMultiSlashSuggestPatched = !p2Unpatched.test(content);
+        p2Unpatched.lastIndex = 0;
         const isAddCodeEditorPatched = content.includes('window.__codeEditorService=this');
-        const isPromptTimelinePatched = content.includes('function wTn(s){return!s.rendersInputOnTop}') && content.includes('this.configurationService.getValue(eRt)||"ruler"');
+        const isPromptTimelinePatched = !p4aUnpatched.test(content) && !p4bUnpatched.test(content);
 
         if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched && isPromptTimelinePatched) {
             if (logger) logger.info('Core đã có đầy đủ patch, bỏ qua việc sửa file bundle.');
-            // Vẫn tự động dọn dẹp cache V8 để tránh tình trạng bytecode cũ bị kẹt
             autoPurgeV8Cache();
             if (!silent) {
                 vscode.window.showInformationMessage('⚡ JARVIS: Hệ thống đã được vá Intellisense & Hook Editor đầy đủ, cache V8 đã được làm mới.');
@@ -627,19 +638,23 @@ async function patchIntellisense(silent = false) {
             if (logger) logger.info(`Đã tạo sao lưu: ${bakPath}`);
         }
 
-        // Patch 1: Pge / Tme (Intellisense bypass)
-        if (!isTmePatched) {
-            const p1 = /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{let\s+([a-z])=new\s+([A-Za-z0-9_$]+)\(1,1,\3\.replace\.startLineNumber,\3\.replace\.startColumn\);return!!\2\.getValueInRange\(\4\)\.match\(\/\^\\s\*\$\/\)\}/;
-            if (p1.test(content)) {
-                content = content.replace(p1, 'function $1($2,$3){return!0}');
-            } else if (content.includes('function Tme(s,o){let e=new j')) {
-                content = content.replace(/function Tme\(s,o\)\{[\s\S]*?match\(\/\^\s\*\$\/\)\}/, 'function Tme(s,o){return!0}');
-            }
+        // Patch 1: Whitespace check bypass
+        if (p1Unpatched.test(content)) {
+            content = content.replace(p1Unpatched, 'function $1($2,$3){return!0}');
+            if (logger) logger.info('Đã vá whitespace check (Patch 1) thành công.');
+        }
+
+        if (pVnUnpatched.test(content)) {
+            content = content.replace(pVnUnpatched, 'function $1($2,$3,$4){return!0}');
+            if (logger) logger.info('Đã mở khóa trigger slash command (v_n -> return!0).');
         }
 
         // Patch 2: Gỡ bỏ ||...parsedInput.parts.find(...)
-        content = content.replace(/\|\|[a-zA-Z0-9_$]+\.parsedInput\.parts\.find\([a-zA-Z0-9_$]+=>[a-zA-Z0-9_$]+\s+instanceof\s+Pm\)/g, '');
-        if (logger) logger.info('Đã mở khóa gợi ý cho slash command thứ 2 trở đi.');
+        p2Unpatched.lastIndex = 0;
+        if (p2Unpatched.test(content)) {
+            content = content.replace(p2Unpatched, '');
+            if (logger) logger.info('Đã mở khóa gợi ý cho slash command thứ 2 trở đi (Patch 2).');
+        }
 
         // Patch 3: Hook addCodeEditor để đính kèm __monacoEditor vào DOM node và duy trì window.__allCodeEditors
         if (content.includes('addCodeEditor(') && !content.includes('window.__codeEditorService=this')) {
@@ -649,17 +664,16 @@ async function patchIntellisense(silent = false) {
             );
         }
 
-        // Patch 4: Mở khóa Native Prompt Timeline của Microsoft
-        const tWtn = 'function wTn(s){return s.location==="panel"&&!s.rendersInputOnTop}';
-        if (content.includes(tWtn)) {
-            content = content.replace(tWtn, 'function wTn(s){return!s.rendersInputOnTop}');
-            if (logger) logger.info('Đã mở khóa wTn cho Timeline chạy ở cả Sidebar và Panel.');
+        // Patch 4a: Mở khóa Timeline chạy ở cả Sidebar và Panel
+        if (p4aUnpatched.test(content)) {
+            content = content.replace(p4aUnpatched, 'function $1($2){return!$2.rendersInputOnTop}');
+            if (logger) logger.info('Đã mở khóa Timeline chạy ở cả Sidebar và Panel (Patch 4a).');
         }
 
-        const tSessionWindow = 'this.environmentService.isSessionsWindow?this.configurationService.getValue(eRt):"off"';
-        if (content.includes(tSessionWindow)) {
-            content = content.replace(tSessionWindow, 'this.configurationService.getValue(eRt)||"ruler"');
-            if (logger) logger.info('Đã mở khóa PromptTimelineFeature cho mọi cửa sổ chat.');
+        // Patch 4b: Mở khóa PromptTimelineFeature cho mọi cửa sổ chat
+        if (p4bUnpatched.test(content)) {
+            content = content.replace(p4bUnpatched, 'this.configurationService.getValue($1)||"gutter"');
+            if (logger) logger.info('Đã mở khóa PromptTimelineFeature cho mọi cửa sổ chat (Patch 4b).');
         }
 
         // Kiểm tra an toàn trước khi ghi: Snippet-Validation & Tính toàn vẹn tệp
@@ -669,7 +683,7 @@ async function patchIntellisense(silent = false) {
             new vm.Script(`(function(e,t){\nthis.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e.inputEditor}))}catch(err){}this.codeEditorService=t;\n})`);
             new vm.Script(`(function(e){\ntry{window.__codeEditorService=this;window.__allCodeEditors=window.__allCodeEditors||[];window.__allCodeEditors.push(e);let _d=e.getContainerDomNode&&e.getContainerDomNode();if(_d){_d.__monacoEditor=e;setTimeout(()=>{try{if(_d.closest&&_d.closest('.interactive-input-part,.chat-input-editor,.interactive-input-editor,.chat-input-widget')){window.__chatInputEditor=e;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e}))}}catch(_){}},50)}}catch(_){}\n})`);
             new vm.Script('function wTn(s){return!s.rendersInputOnTop}');
-            new vm.Script('(function(eRt){\nlet e = this.configurationService.getValue(eRt)||"ruler";\n})');
+            new vm.Script('(function(eRt){\nlet e = this.configurationService.getValue(eRt)||"gutter";\n})');
 
             // 2. Kiểm tra tính toàn vẹn tệp (chống ghi đè rỗng hoặc hỏng file)
             if (!content || content.length < 5000000) {
@@ -740,12 +754,16 @@ async function runSelfHealingDaemon(context) {
 
         if (fs.existsSync(jsPath)) {
             const jsContent = await fs.promises.readFile(jsPath, 'utf8');
-            const isTmePatched = jsContent.includes('function Pge(s,o){return!0}') ||
-                                 jsContent.includes('function Tme(s,o){return!0}') ||
-                                 /function\s+([A-Za-z0-9_$]+)\s*\(([a-z]),([a-z])\)\{return!0\}/.test(jsContent);
-            const isMultiSlashSuggestPatched = !jsContent.includes('.parsedInput.parts.find(w=>w instanceof Pm)') && !jsContent.includes('.parsedInput.parts.find(C=>C instanceof Pm)');
+            const p1Unpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+),\s*([a-zA-Z0-9_$]+)\)\s*\{let\s+[a-zA-Z0-9_$]+=new\s+[A-Za-z0-9_$]+\(1,1,\3\.replace\.startLineNumber,\3\.replace\.startColumn\);[^}]*\}/;
+            const pVnUnpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+),\s*([a-zA-Z0-9_$]+)\)\s*\{if\(\4\.length===0\)return!1;let\s+[a-zA-Z0-9_$]+=\2\.getLineContent\(\3\.lineNumber\)[\s\S]*?\.includes\(["']\/["']\)&&\/[^\/]*\\\/\/\.test\([a-zA-Z0-9_$]+\)\}/;
+            const p2Unpatched = /\|\|[a-zA-Z0-9_$]+\.parsedInput\.parts\.find\([a-zA-Z0-9_$]+=>[a-zA-Z0-9_$]+\s+instanceof\s+Pm\)/;
+            const p4aUnpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+)\)\s*\{return\s+\2\.location===["']panel["']&&!\2\.rendersInputOnTop\}/;
+            const p4bUnpatched = /this\.environmentService\.isSessionsWindow\s*\?\s*this\.configurationService\.getValue\(([A-Za-z0-9_$]+)\)\s*:\s*["']off["']/;
+
+            const isTmePatched = !p1Unpatched.test(jsContent) && !pVnUnpatched.test(jsContent);
+            const isMultiSlashSuggestPatched = !p2Unpatched.test(jsContent);
             const isAddCodeEditorPatched = jsContent.includes('window.__codeEditorService=this');
-            const isPromptTimelinePatched = jsContent.includes('function wTn(s){return!s.rendersInputOnTop}') && jsContent.includes('this.configurationService.getValue(eRt)||"ruler"');
+            const isPromptTimelinePatched = !p4aUnpatched.test(jsContent) && !p4bUnpatched.test(jsContent);
             isJsPatched = isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched && isPromptTimelinePatched;
         }
 
