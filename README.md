@@ -4,7 +4,7 @@
 
 **Bespoke Luxury Visuals & Intelligent Prompt Engineering for VS Code**
 
-[![Version](https://img.shields.io/badge/version-v1.1.37-89b4fa.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.1.46-89b4fa.svg)](package.json)
 [![License](https://img.shields.io/badge/license-MIT-89dceb.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/vscode-%5E1.85.0-74c7ec.svg)](https://code.visualstudio.com/)
 [![Architecture](https://img.shields.io/badge/architecture-Zero--Crash-a6e3a1.svg)](#-zero-crash-architecture)
@@ -131,12 +131,12 @@ Craft an elite, high-performance workspace for Founders & Developers: 3D Isometr
 
 ---
 
-### 13. Chat Timeline Minimap & Glassmorphism Hover Preview (Codex-Style)
+### 13. Unlocked Microsoft Native Prompt Timeline (Gutter & Ruler)
 
-- **Interactive Codex-Style Timeline Rail:** Vertical timeline rail anchored on the right side of the Copilot Chat container (`right: 14px`) providing at-a-glance visibility over long multi-turn sessions (10-50+ turns) without obstructing the native scrollbar.
-- **Theme-Adaptive Glassmorphism Hover Card:** Hovering any timeline tick displays an instant high-density preview card featuring user question titles, turn indices, and content snippets with frosted glass blur (`backdrop-filter: blur(16px)`), inheriting 100% of the active VS Code theme color variables.
-- **Virtualization-Aware Smooth Reveal:** Smart dual-mode scroll controller smoothly navigates to target prompts whether currently in the DOM or unmounted by Monaco List virtualization.
-- **Zero-Core Patch Architecture:** 100% pure client-side implementation running in `vscode-custom.js` and `vscode-custom.css`, completely isolated from `workbench.desktop.main.js`.
+- **Unlocked Native Gutter Timeline:** Unlocks Microsoft's native prompt timeline (`sessions.chatTimeline.display: "gutter"`), providing an elegant vertical track of minimalist 4px dots along the left margin of Copilot Chat with zero interference with text selection.
+- **Glassmorphism Preview Card:** Hovering any dot displays a frosted-glass question preview popup (`backdrop-filter: blur(20px)`), with turn timestamps, query titles, and diff review actions.
+- **Balanced Margin & Anti-Clipping:** Perfectly balances left and right padding (`12px`) across chat response containers, eliminating awkward whitespace while ensuring prompts never collide with gutter dots.
+- **Automated Update-Proof AST Patching:** Structural AST matching automatically adapts to internal compiler name mangling across minor and major VS Code updates.
 
 ---
 
@@ -146,29 +146,23 @@ Craft an elite, high-performance workspace for Founders & Developers: 3D Isometr
 
 Install the official stylesheet loader: [Custom CSS and JS Loader](https://marketplace.visualstudio.com/items?itemName=be5invis.vscode-custom-css) (`be5invis.vscode-custom-css`).
 
-### Quick Start
+### Quick Start (One-Click Master Restore)
 
-1. **Install Extension:** Install `JARVIS IDE Enhancer` from the VS Code Marketplace or from a packaged `.vsix` file.
-2. **Synchronize & Apply Styles:**
+1. **Install Extension:** Install `JARVIS IDE Enhancer` from a packaged `.vsix` file or extension marketplace.
+2. **One-Click Master Restore:**
    - Open Command Palette (`Ctrl+Shift+P` on Windows/Linux or `Cmd+Shift+P` on macOS).
-   - Run: `JARVIS: Sync Setup & Apply Styles`.
-   - Assets extract to `~/.jarvis/style/`, register in `vscode_custom_css.imports`, and trigger the style loader.
-3. **Unlock Slash Command Intellisense (Recommended):**
-   - Run: `JARVIS: Patch Chat Slash Intellisense`.
-   - Safe patching completes in under 0.2s with automatic `.bak` backup.
-4. **Reload Window:**
-   - Click `Reload Window` when prompted to enjoy your upgraded workspace.
+   - Run: **`JARVIS: Master Sync & Patch All (One-Click Restore)`**.
+   - The master controller automatically synchronizes all 24+ macros, compiles 3D cursor styling, unlocks all 7 core bundle patches, injects `workbench.html`, and purges stale V8 bytecode cache in under 1.5s.
+3. **Restart VS Code:**
+   - Close all open VS Code windows and reopen (or execute `Developer: Reload Window`).
 
-### Pure PowerShell Offline Patch (Zero-Node.js)
+### Terminal One-Liner (After VS Code Updates)
 
-For environments without global Node.js on system `PATH` or for instant terminal recovery:
+Whenever VS Code updates and wipes patches, simply run this one-liner in terminal:
 
-```powershell
-# Chạy script độc lập
-powershell -ExecutionPolicy Bypass -File .\patch_core.ps1
-
-# Hoặc chạy lệnh trực tiếp 1-dòng (Direct 1-Liner)
-$f = (Get-ChildItem -Path ([Environment]::GetFolderPath('LocalApplicationData') + '\Programs\Microsoft VS Code') -Filter 'workbench.desktop.main.js' -Recurse | Where-Object { $_.FullName -notmatch '\.bak$' } | Select-Object -First 1).FullName; powershell -ExecutionPolicy Bypass -File .\patch_core.ps1
+```bash
+node patch_all.js
+# Or via global task: Ctrl+Shift+P -> Tasks: Run Task -> ⚡ Patch Chat Slash Intellisense
 ```
 
 ---
@@ -177,12 +171,10 @@ $f = (Get-ChildItem -Path ([Environment]::GetFolderPath('LocalApplicationData') 
 
 | Command Title (Command Palette) | Command ID | Description |
 |:---|:---|:---|
-| `JARVIS: Sync Setup & Apply Styles` | `jarvisEnhancer.syncSetup` | Extracts assets to `~/.jarvis/style/`, updates `settings.json`, and triggers automatic style reload. |
+| `JARVIS: Master Sync & Patch All (One-Click Restore)` | `jarvisEnhancer.masterRestore` | **All-in-one:** Syncs styles, extracts macros, patches all core bundles, injects HTML, and purges V8 cache. |
 | `JARVIS: Discover Macros & Sync Settings` | `jarvisEnhancer.discoverMacros` | Scans `.instructions.md` rule files, extracts custom macro abbreviations, and syncs them to global settings and cloud sync. |
-| `JARVIS: Patch Chat Slash Intellisense` | `jarvisEnhancer.patchIntellisense` | Safely patches VS Code bundle with V8 AST syntax verification to enable mid-prompt slash suggestions and Monaco hooks. |
 | `JARVIS: Edit Custom CSS` | `jarvisEnhancer.editCSS` | Directly opens `~/.jarvis/style/vscode-custom.css` in editor for live styling adjustments. |
 | `JARVIS: Edit Custom JS` | `jarvisEnhancer.editJS` | Directly opens `~/.jarvis/style/vscode-custom.js` in editor for UI script enhancements. |
-| `JARVIS: Run Self-Healing & Verify Patches` | `jarvisEnhancer.runSelfHealing` | Inspects and automatically repairs workbench patches and styling injections if missing after VS Code updates. |
 | `JARVIS: Export Agent Customizations Vault` | `jarvisEnhancer.exportVault` | Bundles and exports MCP servers, skills, prompts, models, and styles into an encrypted vault or sanitized template. |
 | `JARVIS: Import Agent Customizations Vault` | `jarvisEnhancer.importVault` | Restores agent customizations from a `.jarvis-vault` package or template, auto-rehydrating paths and secrets. |
 | `JARVIS: Push Agent Customizations to Cloud (Settings Sync)` | `jarvisEnhancer.pushCloudVault` | Encrypts complete agent customizations and publishes payload to GitHub Settings Sync for seamless multi-device replication. |
@@ -207,8 +199,11 @@ ide-style-studio/
 │   └── vscode-custom.js         # Packaged source JS
 ├── docs/
 │   └── images/                  # High-resolution feature documentation screenshots
-├── extension.js                 # Primary extension controller managing sync and safe patching
-└── package.json                 # Extension manifest declaring commands, settings, and metadata
+├── apply_custom_css.js          # Dynamic workbench.html injector with mtime sorting
+├── apply_workbench_patch.js     # 7-layer structural AST patcher for VS Code core bundle
+├── extension.js                 # Primary extension controller with Master Restore and Self-Healing
+├── package.json                 # Extension manifest declaring commands, settings, and metadata
+└── patch_all.js                 # One-click master restore runner for terminal & tasks
 ```
 
 ---

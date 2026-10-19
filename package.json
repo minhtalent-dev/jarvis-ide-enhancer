@@ -2,7 +2,7 @@
   "name": "jarvis-ide-enhancer",
   "displayName": "JARVIS IDE Enhancer",
   "description": "Enhance VS Code with JARVIS 3D cursor, chat styles, prompt slash intellisense, and UI automation.",
-  "version": "1.1.39",
+  "version": "1.1.46",
   "publisher": "minhtalent-dev",
   "author": "minh <baominh20398@gmail.com>",
   "license": "MIT",
@@ -95,18 +95,13 @@
     },
     "commands": [
       {
-        "command": "jarvisEnhancer.syncSetup",
-        "title": "Sync Setup & Apply Styles",
+        "command": "jarvisEnhancer.masterRestore",
+        "title": "Master Sync & Patch All (One-Click Restore)",
         "category": "JARVIS"
       },
       {
         "command": "jarvisEnhancer.discoverMacros",
         "title": "Discover Macros & Sync Settings",
-        "category": "JARVIS"
-      },
-      {
-        "command": "jarvisEnhancer.patchIntellisense",
-        "title": "Patch Chat Slash Intellisense",
         "category": "JARVIS"
       },
       {
@@ -117,11 +112,6 @@
       {
         "command": "jarvisEnhancer.editJS",
         "title": "Edit Custom JS",
-        "category": "JARVIS"
-      },
-      {
-        "command": "jarvisEnhancer.runSelfHealing",
-        "title": "Run Self-Healing & Verify Patches",
         "category": "JARVIS"
       },
       {
@@ -147,6 +137,10 @@
     ]
   },
   "scripts": {
-    "lint": "node --check extension.js"
+    "lint": "node --check extension.js",
+    "patch-all": "node patch_all.js",
+    "package": "npx -y @vscode/vsce package --no-dependencies",
+    "build": "node build_and_install.js",
+    "install-ext": "node build_and_install.js"
   }
 }

@@ -2,6 +2,45 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.46] - 2026-10-15
+
+### Maintenance & Release
+- **Đóng gói phát hành bản dựng 1.1.46 ổn định:** Tinh chỉnh và đóng gói hoàn thiện toàn bộ hệ thống tối ưu giao diện, phím tắt nhanh và thanh dòng thời gian, đảm bảo khả năng tương thích cao nhất trên các phiên bản mới của ứng dụng.
+
+## [1.1.45] - 2026-10-15
+
+### Improved
+- **Tối ưu hóa khoảng cách thị giác quang học (Optical Balance):** Thiết lập lề trái 28px chừa khoảng trống thở 18px thanh lịch từ cột mốc dòng thời gian sang văn bản, đồng bộ với lề phải 18px, loại bỏ hoàn toàn cảm giác dính chữ hay chật chội.
+
+## [1.1.44] - 2026-10-15
+
+### Improved
+- **Triệt tiêu khoảng đệm lệch lề phải (Pixel-Perfect Symmetry):** Gỡ bỏ hoàn toàn quy tắc ép lề phải của danh sách cũ, thiết lập khoảng đệm lề trái và lề phải đối xứng hoàn hảo 14px cho toàn bộ các chế độ khung trò chuyện (Sidebar, Panel, Editor Tab), giúp văn bản tràn đều và thẩm mỹ tuyệt đối.
+
+## [1.1.43] - 2026-10-15
+
+### Documentation & Maintenance
+- **Cập nhật tài liệu hướng dẫn vận hành toàn diện:** Hoàn thiện hướng dẫn sử dụng cơ chế khôi phục một chạm (Master Restore), tích hợp lệnh chạy từ terminal và bảng lệnh Command Palette.
+- **Tối ưu hóa tài nguyên và cấu trúc tệp:** Đồng bộ hóa tài liệu kiến trúc, dọn dẹp các tệp cài đặt trung gian và tối ưu hiệu suất nạp tiện ích trên phiên bản mới nhất của ứng dụng.
+
+## [1.1.42] - 2026-10-15
+
+### Improved
+- **Khôi phục kích thước chấm tròn thanh dòng thời gian:** Đưa các điểm mốc dòng thời gian về kích thước nhỏ gọn 4px nguyên bản, tinh tế và không gây xao nhãng.
+- **Cân đối khoảng cách hai bên khung trò chuyện:** Đồng bộ khoảng đệm lề trái và lề phải bằng nhau, loại bỏ khoảng trống thừa ở mép phải, giúp nội dung phản hồi hiển thị cân xứng và thẩm mỹ.
+
+## [1.1.41] - 2026-10-15
+
+### Improved
+- **Hợp nhất lệnh vận hành một chạm (Master Sync & Patch All):** Tối ưu hóa bảng lệnh Command Palette, gộp 3 thao tác đồng bộ giao diện, vá lõi và tự phục hồi thành 1 lệnh duy nhất. Người dùng chỉ cần 1 cú click để khôi phục toàn bộ hệ thống sau mỗi lần nâng cấp ứng dụng.
+- **Tối ưu hóa giao diện Chat Artifacts:** Trả lại 100% phong cách hiển thị gốc chuẩn của VS Code cho danh sách tài liệu và tác vụ trong khung chat, đảm bảo độ tương thích và thẩm mỹ tự nhiên nhất.
+
+## [1.1.40] - 2026-10-15
+
+### Added
+- **Cơ chế khôi phục một chạm (One-Click Master Restore):** Bổ sung tác vụ khôi phục toàn diện hệ thống chỉ với một lệnh duy nhất. Tự động phát hiện và áp dụng các tối ưu giao diện, phím tắt nhanh và thanh dòng thời gian trên phiên bản mới nhất của ứng dụng ngay sau khi cập nhật.
+- **Tối ưu hóa quản lý phiên bản tiện ích:** Tự động dọn dẹp các tệp cài đặt cũ, loại bỏ nguy cơ xung đột phiên bản và đảm bảo tiện ích luôn vận hành ở trạng thái mới nhất và ổn định nhất.
+
 ## [1.1.39] - 2026-10-14
 
 ### Fixed

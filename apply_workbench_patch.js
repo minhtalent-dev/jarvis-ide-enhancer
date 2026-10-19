@@ -4,21 +4,28 @@ const os = require('os');
 const vm = require('vm');
 
 function getJsPath() {
-    const fixedPath = 'C:\\Users\\mes\\AppData\\Local\\Programs\\Microsoft VS Code\\7baac39ec3\\resources\\app\\out\\vs\\workbench\\workbench.desktop.main.js';
-    if (fs.existsSync(fixedPath)) return fixedPath;
     const baseDir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Programs', 'Microsoft VS Code');
     if (fs.existsSync(baseDir)) {
         try {
+            const candidates = [];
             const entries = fs.readdirSync(baseDir, { withFileTypes: true });
             for (const entry of entries) {
                 if (entry.isDirectory()) {
                     const candidate = path.join(baseDir, entry.name, 'resources', 'app', 'out', 'vs', 'workbench', 'workbench.desktop.main.js');
-                    if (fs.existsSync(candidate)) return candidate;
+                    if (fs.existsSync(candidate)) {
+                        const stat = fs.statSync(candidate);
+                        candidates.push({ path: candidate, mtime: stat.mtimeMs, name: entry.name });
+                    }
                 }
+            }
+            if (candidates.length > 0) {
+                candidates.sort((a, b) => b.mtime - a.mtime);
+                console.log(`[JARVIS] Phát hiện build VS Code mới nhất: ${candidates[0].name} (${new Date(candidates[0].mtime).toLocaleString()})`);
+                return candidates[0].path;
             }
         } catch (e) {}
     }
-    return fixedPath;
+    return '';
 }
 
 const jsPath = getJsPath();
@@ -43,13 +50,14 @@ const pVnUnpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+),\s*([a-zA
 const p2Unpatched = /\|\|[a-zA-Z0-9_$]+\.parsedInput\.parts\.find\([a-zA-Z0-9_$]+=>[a-zA-Z0-9_$]+\s+instanceof\s+Pm\)/g;
 const p4aUnpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+)\)\s*\{return\s+\2\.location===["']panel["']&&!\2\.rendersInputOnTop\}/;
 const p4bUnpatched = /this\.environmentService\.isSessionsWindow\s*\?\s*this\.configurationService\.getValue\(([A-Za-z0-9_$]+)\)\s*:\s*["']off["']/;
+const pBfoUnpatched = /function\s+([A-Za-z0-9_$]+)\s*\(([a-zA-Z0-9_$]+),\s*([a-zA-Z0-9_$]+)\)\s*\{return\s+[A-Za-z0-9_$]+\(\2\)&&[a-zA-Z0-9_$]+\.getValue\(([A-Za-z0-9_$]+)\)===!0&&[a-zA-Z0-9_$]+\.getValue\(["']chat\.experimental\.stickyScroll\.enabled["']\)===!1\}/;
 
 const isTmePatched = !p1Unpatched.test(content) && !pVnUnpatched.test(content);
 p2Unpatched.lastIndex = 0;
 const isMultiSlashSuggestPatched = !p2Unpatched.test(content);
 p2Unpatched.lastIndex = 0;
 const isAddCodeEditorPatched = content.includes('window.__codeEditorService=this');
-const isPromptTimelinePatched = !p4aUnpatched.test(content) && !p4bUnpatched.test(content);
+const isPromptTimelinePatched = !p4aUnpatched.test(content) && !p4bUnpatched.test(content) && !pBfoUnpatched.test(content);
 
 if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched && isPromptTimelinePatched) {
     console.log('⚡ Hệ thống đã có đầy đủ 4 bản vá (Intellisense bypass, Multi-slash unblocked, Hook addCodeEditor, Unlock Native Timeline), không cần vá lại.');
@@ -93,6 +101,24 @@ try {
     if (p4bUnpatched.test(content)) {
         console.log('Patch 4b: Mở khóa PromptTimelineFeature cho mọi cửa sổ chat thường (Patch 4b)...');
         content = content.replace(p4bUnpatched, 'this.configurationService.getValue($1)||"gutter"');
+    }
+
+    // Patch 4c: Mở khóa điều kiện Bfo để timeline/sticky scroll luôn bật
+    if (pBfoUnpatched.test(content)) {
+        console.log('Patch 4c: Mở khóa hàm Bfo (sticky/timeline gate)...');
+        content = content.replace(pBfoUnpatched, 'function $1($2,$3){return!0}');
+    }
+
+    // Patch 4d: Bỏ ẩn timeline khi ít hơn 2 câu hỏi (hiển thị ngay từ đầu)
+    if (content.includes('u.length<2')) {
+        console.log('Patch 4d: Gỡ bỏ điều kiện ẩn timeline khi < 2 requests...');
+        content = content.replace(/n\.domNode\.classList\.toggle\(["']hidden["'],u\.length<2\)/g, 'n.domNode.classList.toggle("hidden",!1)');
+    }
+
+    // Patch 4e: Bỏ ẩn các chấm tròn khi chiều rộng chat hẹp (< 320px)
+    if (content.includes('e<320')) {
+        console.log('Patch 4e: Gỡ bỏ class overflowing khi chat hẹp...');
+        content = content.replace(/this\._domNode\.classList\.toggle\(["']overflowing["'],e<320\)/g, 'this._domNode.classList.toggle("overflowing",!1)');
     }
 
     // 5. Kiểm tra an toàn: Snippet-Validation & Tính toàn vẹn tệp

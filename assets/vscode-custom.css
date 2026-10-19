@@ -339,14 +339,31 @@ div[class*="request"] .rendered-markdown .custom-backtick-pill,
    Bespoke Luxury Styling cho Microsoft Native Prompt Timeline (.prompt-timeline)
    ========================================================================== */
 
-/* 1. Mở khoảng đệm an toàn cho tin nhắn chat để không bị thanh rail đè */
-.prompt-timeline-host.prompt-timeline-with-rail.interactive-session .interactive-item-container,
-.prompt-timeline-host.prompt-timeline-with-rail .interactive-item-container,
-.prompt-timeline-with-rail .monaco-list-row {
+/* 1. Triệt tiêu khoảng đệm thừa trên row để lề 2 bên đối xứng hoàn toàn */
+.interactive-session .monaco-list-row,
+.prompt-timeline-host .monaco-list-row,
+.chat-editor .monaco-list-row,
+.monaco-workbench .interactive-item-container.interactive-item-compact,
+.monaco-list-row {
+    padding-right: 0 !important;
+}
+
+/* 2. Cân đối quang học (Optical Balance): lề trái 28px (chừa chỗ cho chấm tròn và cách chữ 18px), lề phải 18px */
+.interactive-session .interactive-item-container,
+.prompt-timeline-host .interactive-item-container,
+.chat-editor .interactive-item-container,
+.interactive-item-container {
+    padding-left: 20px !important;
+    box-sizing: border-box !important;
+}
+
+/* 3. Chỉ khi dùng Ruler bên phải (có vạch thước ruler-marks) mới mở rộng đệm phải */
+.prompt-timeline-host:has(.prompt-timeline-ruler-marks) .interactive-item-container,
+.interactive-session:has(.prompt-timeline-ruler-marks) .interactive-item-container {
     padding-right: calc(var(--prompt-timeline-rail-width, 36px) + 8px) !important;
 }
 
-/* 2. Thanh ray Native Timeline */
+/* 4. Thanh ray Native Timeline */
 .prompt-timeline-rail {
     display: block !important;
     right: 14px !important;
@@ -421,17 +438,28 @@ div[class*="request"] .rendered-markdown .custom-backtick-pill,
 /* 1. Thu hẹp triệt để container tàng hình 300px của Microsoft khi chưa rê chuột vào chấm */
 nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
 .prompt-timeline-rail.prompt-timeline-rail-gutter:not(.revealed) {
-    width: 24px !important;
+    width: 20px !important;
     pointer-events: none !important;
     overflow: visible !important;
+}
+
+/* Chống class hidden và overflowing của Microsoft tự ẩn timeline khi ít turn hoặc chat hẹp */
+.prompt-timeline-rail.hidden {
+    display: flex !important;
+}
+.prompt-timeline-rail-gutter.overflowing .prompt-timeline-gutter-rest {
+    display: flex !important;
+}
+.prompt-timeline-rail-gutter.overflowing .prompt-timeline-gutter-panel.revealed {
+    display: block !important;
 }
 
 /* 2. Chỉ phần tử chứa các chấm tròn (.prompt-timeline-gutter-rest) mới bắt sự kiện chuột ban đầu */
 .prompt-timeline-rail-gutter .prompt-timeline-gutter-rest {
     pointer-events: auto !important;
     cursor: pointer !important;
-    padding: 8px 4px !important;
-    border-radius: 12px !important;
+    padding: 6px 3px !important;
+    border-radius: 10px !important;
     transition: background-color 0.15s ease !important;
 }
 
@@ -439,15 +467,25 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Điểm nhấn chấm tròn khi active / hover */
+/* Điểm nhấn chấm tròn khi active / hover - Khôi phục kích thước 4px ban đầu */
+.prompt-timeline-gutter-dot {
+    width: 4px !important;
+    height: 4px !important;
+    border-radius: 50% !important;
+    background-color: rgba(255, 255, 255, 0.35) !important;
+    transition: all 0.15s ease !important;
+}
+
 .prompt-timeline-gutter-dot.active {
     background-color: #c084fc !important;
-    box-shadow: 0 0 6px rgba(192, 132, 252, 0.7) !important;
+    box-shadow: 0 0 5px rgba(192, 132, 252, 0.8) !important;
+    transform: scale(1.25) !important;
 }
 
 .prompt-timeline-gutter-dot:hover {
     background-color: #89b4fa !important;
-    transform: scale(1.6) !important;
+    box-shadow: 0 0 6px rgba(137, 180, 250, 0.9) !important;
+    transform: scale(1.35) !important;
 }
 
 /* 3. Khi đã chạm vào chấm và panel mở ra (.revealed): mở rộng hit-box vừa đủ để tương tác danh sách câu hỏi */
@@ -487,173 +525,6 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     color: var(--vscode-foreground, #e2e8f0) !important;
 }
 
-/* ==========================================================================
-   Bespoke Fluent Styling cho Chat Artifacts Widget (.chat-artifacts-*)
-   Docking liền mạch với Chat Input Stack & Todos, hiệu ứng hover tinh tế
-   ========================================================================== */
-
-/* 1. Khung chứa Artifacts Widget - Ép sát vào Chat Input Stack */
-.interactive-session .interactive-input-part .chat-artifacts-widget-container {
-    width: 100% !important;
-    position: relative !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    box-sizing: border-box !important;
-    z-index: 2 !important;
-}
-
-/* 2. Thẻ Artifacts Widget chính - Ăn liền với khung chat và Todos */
-.chat-artifacts-widget {
-    box-sizing: border-box !important;
-    width: 100% !important;
-    padding: 2px 4px !important;
-    margin: 0 !important;
-    background: color-mix(in srgb, var(--vscode-input-background, var(--vscode-editor-background, #1e1e2e)) 80%, transparent) !important;
-    backdrop-filter: blur(12px) saturate(150%) !important;
-    -webkit-backdrop-filter: blur(12px) saturate(150%) !important;
-    border-left: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.08)) !important;
-    border-right: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.08)) !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
-    border-bottom: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    transition: background-color 0.2s ease, border-color 0.2s ease !important;
-}
-
-/* Khi Artifacts là thành phần đầu tiên trong stack (không có Todos phía trên) */
-.interactive-session .interactive-input-part .chat-artifacts-widget-container:first-child .chat-artifacts-widget,
-.interactive-session .interactive-input-part .chat-input-stack > .chat-artifacts-widget-container:first-of-type:not(.chat-input-stack-continues) .chat-artifacts-widget {
-    border-radius: var(--chat-input-stack-radius-top, var(--vscode-cornerRadius-large, 8px)) var(--chat-input-stack-radius-top, var(--vscode-cornerRadius-large, 8px)) 0 0 !important;
-    border-top: 1px solid var(--vscode-input-border, rgba(255, 255, 255, 0.08)) !important;
-}
-
-/* 3. Thanh tiêu đề mở rộng Artifacts (Header Button) */
-.chat-artifacts-widget .chat-artifacts-expand {
-    width: 100% !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-expand .monaco-button {
-    width: 100% !important;
-    height: 26px !important;
-    box-sizing: border-box !important;
-    border-radius: 4px !important;
-    padding: 0 6px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    background: transparent !important;
-    border: none !important;
-    outline: none !important;
-    cursor: pointer !important;
-    transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-expand .monaco-button:hover {
-    background: color-mix(in srgb, #a855f7 12%, rgba(255, 255, 255, 0.06)) !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-expand .monaco-button:active {
-    background: color-mix(in srgb, #a855f7 20%, rgba(255, 255, 255, 0.1)) !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-title-section {
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    font-weight: 500 !important;
-    font-size: 11.5px !important;
-    line-height: 26px !important;
-    color: var(--vscode-foreground, #e2e8f0) !important;
-    letter-spacing: 0.2px !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-expand .monaco-button:hover .chat-artifacts-title-section {
-    color: #f1f5f9 !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-title-section .expand-icon.codicon {
-    font-size: 13px !important;
-    color: var(--vscode-icon-foreground, #94a3b8) !important;
-    transition: color 0.15s ease, transform 0.15s ease !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-expand .monaco-button:hover .expand-icon.codicon {
-    color: #c084fc !important;
-}
-
-/* 4. Danh sách Artifacts (Body List) */
-.chat-artifacts-widget .chat-artifacts-list {
-    margin-top: 2px !important;
-    padding-bottom: 2px !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row {
-    height: 24px !important;
-    line-height: 24px !important;
-    border-radius: 4px !important;
-    margin: 1px 2px !important;
-    padding: 0 6px !important;
-    box-sizing: border-box !important;
-    border: 1px solid transparent !important;
-    cursor: pointer !important;
-    transition: background-color 0.12s ease, border-color 0.12s ease !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row:hover {
-    background: color-mix(in srgb, #a855f7 14%, rgba(255, 255, 255, 0.04)) !important;
-    border-color: rgba(192, 132, 252, 0.18) !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row.selected,
-.chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row.focused {
-    background: color-mix(in srgb, #a855f7 22%, rgba(255, 255, 255, 0.08)) !important;
-    border-color: rgba(192, 132, 252, 0.35) !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-list-icon {
-    color: #c084fc !important;
-    font-size: 13.5px !important;
-    margin-right: 6px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-list-label {
-    font-size: 11.5px !important;
-    color: var(--vscode-foreground, #e2e8f0) !important;
-    font-weight: 500 !important;
-    text-overflow: ellipsis !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-list-description {
-    font-size: 10px !important;
-    color: var(--vscode-descriptionForeground, #94a3b8) !important;
-    margin-left: 8px !important;
-    padding: 1px 6px !important;
-    background: rgba(255, 255, 255, 0.05) !important;
-    border-radius: 3px !important;
-    border: 1px solid rgba(255, 255, 255, 0.05) !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-list .monaco-list .monaco-list-row:hover .chat-artifacts-list-description {
-    background: rgba(192, 132, 252, 0.12) !important;
-    color: #e2e8f0 !important;
-    border-color: rgba(192, 132, 252, 0.2) !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-list-actions .monaco-action-bar .action-item .action-label {
-    border-radius: 4px !important;
-    padding: 2px 4px !important;
-    color: var(--vscode-icon-foreground, #94a3b8) !important;
-    transition: color 0.15s ease, background-color 0.15s ease !important;
-}
-
-.chat-artifacts-widget .chat-artifacts-list-actions .monaco-action-bar .action-item .action-label:hover {
-    color: #f1f5f9 !important;
-    background: rgba(255, 255, 255, 0.1) !important;
-}
 
 
 

@@ -515,30 +515,30 @@
         // Kênh 1: window.__chatInputEditor
         if (window.__chatInputEditor && !window.__chatInputEditor.__slashPillAttached) {
             attachChatPillDecorations(window.__chatInputEditor);
-            return;
         }
 
         // Kênh 2: window.__allCodeEditors
         if (window.__allCodeEditors && Array.isArray(window.__allCodeEditors)) {
             for (const ed of window.__allCodeEditors) {
                 if (ed && !ed.__slashPillAttached) {
-                    const dom = ed.getContainerDomNode && ed.getContainerDomNode();
-                    if (dom && dom.closest && dom.closest('.interactive-input-part, .chat-input-editor, .interactive-input-editor, .chat-input-widget, .chat-input-container, [class*="interactive-input"], [class*="chat-input"]')) {
+                    const dom = (ed.getDomNode && ed.getDomNode()) || (ed.getContainerDomNode && ed.getContainerDomNode());
+                    const uri = ed.getModel && ed.getModel() && ed.getModel().uri && ed.getModel().uri.toString();
+                    const isChat = (uri && (uri.includes('chat') || uri.includes('interactive') || uri.includes('session'))) ||
+                                  (dom && dom.closest && dom.closest('.interactive-input-part, .chat-input-editor, .interactive-input-editor, .chat-input-widget, .chat-input-container, [class*="interactive-input"], [class*="chat-input"]'));
+                    if (isChat) {
                         window.__chatInputEditor = ed;
                         attachChatPillDecorations(ed);
-                        return;
                     }
                 }
             }
         }
 
         // Kênh 3: Query trực tiếp DOM
-        const domEls = document.querySelectorAll('.interactive-input-editor .monaco-editor, .chat-input-editor .monaco-editor, .interactive-input-part .monaco-editor, .chat-input-widget .monaco-editor, .chat-input-container .monaco-editor, [class*="interactive-input"] .monaco-editor, [class*="chat-input"] .monaco-editor');
+        const domEls = document.querySelectorAll('.interactive-input-editor, .chat-input-editor, .interactive-input-part, .chat-input-widget, .chat-input-container, [class*="interactive-input"], [class*="chat-input"]');
         for (const el of domEls) {
             if (el.__monacoEditor && !el.__monacoEditor.__slashPillAttached) {
                 window.__chatInputEditor = el.__monacoEditor;
                 attachChatPillDecorations(el.__monacoEditor);
-                return;
             }
         }
     }
@@ -567,6 +567,12 @@
         findAndAttachChatEditor();
     });
 
+    if (typeof document !== 'undefined') {
+        document.addEventListener('focusin', () => {
+            findAndAttachChatEditor();
+        }, true);
+    }
+
     /**
      * Bọc span pill cho token /cmd và `cmd trong bong bóng lịch sử chat
      */
@@ -583,30 +589,38 @@
             return;
         }
 
+        // Bỏ qua nếu đã decorate (tránh forced layout reflow từ textContent)
+        if (markdownEl.dataset.jarvisDecorated === 'true') {
+            return;
+        }
+        markdownEl.dataset.jarvisDecorated = 'true';
+
         const currentText = markdownEl.textContent || '';
-        // Tránh chạy lặp nếu text không đổi và đã có pill
-        if (markdownEl.__jarvisProcessedText === currentText && markdownEl.querySelector('.custom-wf-pill, .custom-backtick-pill')) {
+        if (!currentText.includes('/') && !currentText.includes('`')) {
             return;
         }
 
-        // 1. Unwrap các thẻ <code> inline (không thuộc <pre>) thành text node có backtick
+        const activeMacros = getActiveMacros();
+        const knownMacroTokens = new Set(activeMacros.map((m) => m.token.toLowerCase()));
+
+        // 1. Kiểm tra các thẻ <code> inline: Chỉ chuyển đổi nếu thực sự là macro hợp lệ
         const codeElements = Array.from(markdownEl.querySelectorAll('code')).filter(
-            (codeEl) => !codeEl.closest('pre')
+            (codeEl) => !codeEl.closest('pre') && !codeEl.closest('.custom-backtick-pill')
         );
         for (const codeEl of codeElements) {
-            const rawContent = codeEl.textContent || '';
-            const textNode = document.createTextNode('`' + rawContent + '`');
-            if (codeEl.parentNode) {
-                codeEl.parentNode.replaceChild(textNode, codeEl);
+            const rawContent = (codeEl.textContent || '').trim();
+            const token = rawContent.startsWith('`') ? rawContent : '`' + rawContent;
+            if (knownMacroTokens.has(token.toLowerCase())) {
+                const span = document.createElement('span');
+                span.className = 'custom-backtick-pill';
+                span.textContent = token;
+                if (codeEl.parentNode) {
+                    codeEl.parentNode.replaceChild(span, codeEl);
+                }
             }
         }
-        if (typeof markdownEl.normalize === 'function') {
-            markdownEl.normalize();
-        }
 
-        markdownEl.__jarvisProcessedText = markdownEl.textContent || '';
-
-        // 2. Duyệt các text node và thay thế các tokens
+        // 2. Duyệt các text node (không nằm trong code, pre, hoặc pill có sẵn)
         const walker = document.createTreeWalker(
             markdownEl,
             NodeFilter.SHOW_TEXT,
@@ -617,7 +631,7 @@
                     }
                     const parent = node.parentElement;
                     if (!parent) return NodeFilter.FILTER_REJECT;
-                    if (parent.closest('.custom-wf-pill, .custom-backtick-pill, pre')) {
+                    if (parent.closest('.custom-wf-pill, .custom-backtick-pill, code, pre')) {
                         return NodeFilter.FILTER_REJECT;
                     }
                     return NodeFilter.FILTER_ACCEPT;
@@ -632,27 +646,10 @@
         }
 
         const slashRe = /(?:^|[\s>:,;])(\/[\p{L}0-9_.:-]+)/gu;
-        const inlineCodeRe = /(?:^|[^\\])`([^`\r\n]+)`(?=[\s.,;:!?)\]\r\n]|$)/gu;
 
         for (const textNode of nodesToReplace) {
             const text = textNode.nodeValue;
             const allItems = [];
-
-            // Quét các inline code thật sự để phục hồi lại thẻ <code>
-            inlineCodeRe.lastIndex = 0;
-            let icm;
-            while ((icm = inlineCodeRe.exec(text)) !== null) {
-                const full = icm[0];
-                const codeContent = icm[1];
-                const startIdx = icm.index + full.indexOf('`');
-                const endIdx = startIdx + codeContent.length + 2;
-                allItems.push({
-                    start: startIdx,
-                    end: endIdx,
-                    type: 'inline-code',
-                    content: codeContent
-                });
-            }
 
             // Quét slash commands
             slashRe.lastIndex = 0;
@@ -677,6 +674,10 @@
                     end: bt.end,
                     type: 'backtick'
                 });
+            }
+
+            if (allItems.length === 0) {
+                continue;
             }
 
             // Sắp xếp theo vị trí xuất hiện
@@ -708,10 +709,6 @@
                         span.className = 'custom-backtick-pill';
                         span.textContent = item.token;
                         frag.appendChild(span);
-                    } else if (item.type === 'inline-code') {
-                        const code = document.createElement('code');
-                        code.textContent = item.content;
-                        frag.appendChild(code);
                     }
                     lastIndex = item.end;
                 }
@@ -725,22 +722,54 @@
         }
     }
 
+    let _scanHistoryRaf = null;
+    function scheduleScanAndDecorateHistory() {
+        if (_scanHistoryRaf || typeof requestAnimationFrame === 'undefined') {
+            if (!_scanHistoryRaf) scanAndDecorateHistory();
+            return;
+        }
+        _scanHistoryRaf = requestAnimationFrame(() => {
+            _scanHistoryRaf = null;
+            scanAndDecorateHistory();
+        });
+    }
+
+    let _evalCodeBlocksRaf = null;
+    function scheduleEvaluateEmptyCodeBlocks() {
+        if (_evalCodeBlocksRaf || typeof requestAnimationFrame === 'undefined') {
+            if (!_evalCodeBlocksRaf && typeof document !== 'undefined' && document.body) {
+                evaluateEmptyCodeBlockElements(document.body);
+            }
+            return;
+        }
+        _evalCodeBlocksRaf = requestAnimationFrame(() => {
+            _evalCodeBlocksRaf = null;
+            if (typeof document !== 'undefined' && document.body) {
+                evaluateEmptyCodeBlockElements(document.body);
+            }
+        });
+    }
+
     /**
      * Quét và áp dụng decorate cho toàn bộ bong bóng chat history
      */
     function scanAndDecorateHistory() {
         if (typeof document === 'undefined') return;
+        if (scanAndDecorateHistory._isDecorating) return;
         if (!scanAndDecorateHistory._polling && typeof setInterval !== 'undefined') {
             scanAndDecorateHistory._polling = true;
-            setInterval(scanAndDecorateHistory, 600);
+            setInterval(scheduleScanAndDecorateHistory, 2000);
         }
         try {
+            scanAndDecorateHistory._isDecorating = true;
             const targets = document.querySelectorAll(
                 '.interactive-request .rendered-markdown, .chat-item.request .rendered-markdown, .monaco-list-row.request .rendered-markdown, [data-index].request .rendered-markdown, .chat-row.request .rendered-markdown, .chat-request .rendered-markdown, div[class*="request"] .rendered-markdown'
             );
             targets.forEach((el) => decorateHistoryBubble(el));
         } catch (err) {
             console.error('[JARVIS] Error scanning history:', err);
+        } finally {
+            scanAndDecorateHistory._isDecorating = false;
         }
     }
 
@@ -816,6 +845,7 @@
 
     if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
         const historyObserver = new MutationObserver((mutations) => {
+            if (scanAndDecorateHistory._isDecorating) return;
             let shouldScan = false;
             for (let i = 0; i < mutations.length; i++) {
                 if (mutations[i].addedNodes && mutations[i].addedNodes.length > 0) {
@@ -824,10 +854,8 @@
                 }
             }
             if (shouldScan) {
-                scanAndDecorateHistory();
-                if (document.body) {
-                    evaluateEmptyCodeBlockElements(document.body);
-                }
+                scheduleScanAndDecorateHistory();
+                scheduleEvaluateEmptyCodeBlocks();
             }
         });
 
@@ -835,8 +863,8 @@
             const target = document.body || document.documentElement;
             if (target) {
                 historyObserver.observe(target, { childList: true, subtree: true });
-                scanAndDecorateHistory();
-                evaluateEmptyCodeBlockElements(document.body || target);
+                scheduleScanAndDecorateHistory();
+                scheduleEvaluateEmptyCodeBlocks();
                 findAndAttachChatEditor();
             }
         };
@@ -854,16 +882,22 @@
 
     if (typeof setInterval !== 'undefined') {
         setInterval(() => {
-            if (typeof document !== 'undefined' && document.body) {
-                evaluateEmptyCodeBlockElements(document.body);
-            }
-        }, 600);
+            scheduleEvaluateEmptyCodeBlocks();
+        }, 2000);
     }
 
     /**
-     * Theo dõi window.__codeEditorService để tự động gắn decorations cho mọi Monaco Editor
+     * Theo dõi window.__codeEditorService để tự động gắn decorations cho Chat Input
      */
     function watchAllEditors() {
+        function isChatEditor(ed) {
+            if (!ed) return false;
+            const dom = (ed.getDomNode && ed.getDomNode()) || (ed.getContainerDomNode && ed.getContainerDomNode());
+            const uri = ed.getModel && ed.getModel() && ed.getModel().uri && ed.getModel().uri.toString();
+            return !!((uri && (uri.includes('chat') || uri.includes('interactive') || uri.includes('session'))) ||
+                      (dom && dom.closest && dom.closest('.interactive-input-part, .chat-input-editor, .interactive-input-editor, .chat-input-widget, .chat-input-container, [class*="interactive-input"], [class*="chat-input"]')));
+        }
+
         function hookService(svc) {
             if (!svc || svc.__watched) return;
             svc.__watched = true;
@@ -873,7 +907,9 @@
                     const editors = svc.listCodeEditors();
                     if (editors && typeof editors[Symbol.iterator] === 'function') {
                         for (const ed of editors) {
-                            attachChatPillDecorations(ed);
+                            if (isChatEditor(ed)) {
+                                attachChatPillDecorations(ed);
+                            }
                         }
                     }
                 } catch (e) {
@@ -884,7 +920,9 @@
             if (typeof svc.onCodeEditorAdd === 'function') {
                 try {
                     svc.onCodeEditorAdd((editor) => {
-                        attachChatPillDecorations(editor);
+                        if (isChatEditor(editor)) {
+                            attachChatPillDecorations(editor);
+                        }
                     });
                 } catch (e) {
                     console.error('[JARVIS] Error hooking onCodeEditorAdd:', e);
@@ -897,14 +935,16 @@
                         const editors = svc.listCodeEditors();
                         if (editors && typeof editors[Symbol.iterator] === 'function') {
                             for (const ed of editors) {
-                                attachChatPillDecorations(ed);
+                                if (isChatEditor(ed)) {
+                                    attachChatPillDecorations(ed);
+                                }
                             }
                         }
                     }
                 } catch (e) {
                     console.error('[JARVIS] Error polling code editors:', e);
                 }
-            }, 300);
+            }, 2000);
         }
 
         let _svc = window.__codeEditorService;

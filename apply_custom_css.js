@@ -164,23 +164,34 @@ if (fs.existsSync(srcJs)) {
 
 // 3. Tìm và ghi đè vào workbench.html của VS Code
 function getWorkbenchHtmlPath() {
-    const fixedPath = 'C:\\Users\\mes\\AppData\\Local\\Programs\\Microsoft VS Code\\7baac39ec3\\resources\\app\\out\\vs\\code\\electron-browser\\workbench\\workbench.html';
-    if (fs.existsSync(fixedPath)) return fixedPath;
     const baseDir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Programs', 'Microsoft VS Code');
     if (fs.existsSync(baseDir)) {
         try {
+            const candidates = [];
             const entries = fs.readdirSync(baseDir, { withFileTypes: true });
             for (const entry of entries) {
                 if (entry.isDirectory()) {
                     const candidate1 = path.join(baseDir, entry.name, 'resources', 'app', 'out', 'vs', 'code', 'electron-browser', 'workbench', 'workbench.html');
-                    if (fs.existsSync(candidate1)) return candidate1;
+                    if (fs.existsSync(candidate1)) {
+                        const stat = fs.statSync(candidate1);
+                        candidates.push({ path: candidate1, mtime: stat.mtimeMs, name: entry.name });
+                        continue;
+                    }
                     const candidate2 = path.join(baseDir, entry.name, 'resources', 'app', 'out', 'vs', 'workbench', 'workbench.html');
-                    if (fs.existsSync(candidate2)) return candidate2;
+                    if (fs.existsSync(candidate2)) {
+                        const stat = fs.statSync(candidate2);
+                        candidates.push({ path: candidate2, mtime: stat.mtimeMs, name: entry.name });
+                    }
                 }
+            }
+            if (candidates.length > 0) {
+                candidates.sort((a, b) => b.mtime - a.mtime);
+                console.log(`[JARVIS] Phát hiện workbench.html mới nhất: ${candidates[0].name} (${new Date(candidates[0].mtime).toLocaleString()})`);
+                return candidates[0].path;
             }
         } catch (e) {}
     }
-    return fixedPath;
+    return '';
 }
 
 const htmlPath = getWorkbenchHtmlPath();
@@ -190,6 +201,46 @@ if (!fs.existsSync(htmlPath)) {
 }
 
 let html = fs.readFileSync(htmlPath, 'utf8');
+
+// Tự động phục hồi nếu workbench.html bị rỗng hoặc lỗi mất thẻ </head>
+if (!html || html.trim().length === 0 || !html.includes('</head>')) {
+    console.warn('[JARVIS] workbench.html rỗng hoặc hỏng, đang tự động phục hồi từ backup...');
+    const htmlDir = path.dirname(htmlPath);
+    const bakGeneric = `${htmlPath}.bak`;
+    let restored = false;
+    if (fs.existsSync(bakGeneric)) {
+        try {
+            const bc = fs.readFileSync(bakGeneric, 'utf8');
+            if (bc && bc.includes('</head>')) {
+                html = bc;
+                restored = true;
+                console.log(`Đã phục hồi từ: ${bakGeneric}`);
+            }
+        } catch (_) {}
+    }
+    if (!restored) {
+        try {
+            const baks = fs.readdirSync(htmlDir).filter(f => f.includes('bak'));
+            for (const b of baks) {
+                const bp = path.join(htmlDir, b);
+                try {
+                    const bc = fs.readFileSync(bp, 'utf8');
+                    if (bc && bc.includes('</head>')) {
+                        html = bc;
+                        restored = true;
+                        console.log(`Đã phục hồi từ: ${bp}`);
+                        break;
+                    }
+                } catch (_) {}
+            }
+        } catch (_) {}
+    }
+    if (!restored) {
+        html = `<!-- Copyright (C) Microsoft Corporation. All rights reserved. -->\n<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<meta charset="utf-8" />\n\t\t<!-- Workbench CSS -->\n\t\t<link rel="stylesheet" href="../../../workbench/workbench.desktop.main.css">\n\t</head>\n\t<body aria-label="">\n\t</body>\n\t<!-- Startup (do not modify order of script tags!) -->\n\t<script src="./workbench.js" type="module"></script>\n</html>`;
+        console.log('Đã tạo lại workbench.html từ template chuẩn của VS Code.');
+    }
+}
+
 const alreadyInjected = html.includes('VSCODE-CUSTOM-CSS-START');
 
 const cssContent = fs.readFileSync(destCss, 'utf8');
@@ -197,14 +248,12 @@ const jsContent = fs.readFileSync(destJs, 'utf8');
 
 if (alreadyInjected) {
     console.log('workbench.html đã được inject Custom CSS trước đó. Đang cập nhật CSS & JS mới nhất...');
-    const cssContent = fs.readFileSync(destCss, 'utf8');
-    const jsContent = fs.readFileSync(destJs, 'utf8');
     const customBlockRegex = /<!-- !! VSCODE-CUSTOM-CSS-START !! -->[\s\S]*?<!-- !! VSCODE-CUSTOM-CSS-END !! -->/;
     const newCustomBlock = `<!-- !! VSCODE-CUSTOM-CSS-START !! -->\n` +
         `<style>\n${cssContent}\n</style>\n` +
         `<script>\n${jsContent}\n</script>\n` +
         `<!-- !! VSCODE-CUSTOM-CSS-END !! -->`;
-    html = html.replace(customBlockRegex, newCustomBlock);
+    html = html.replace(customBlockRegex, () => newCustomBlock);
     fs.writeFileSync(htmlPath, html, 'utf8');
     console.log(`Đã cập nhật Custom CSS & JS vào: ${htmlPath}`);
 } else {
@@ -219,14 +268,10 @@ if (alreadyInjected) {
         fs.copyFileSync(htmlPath, bakCustomCss);
         console.log(`Tạo backup be5invis: ${bakCustomCss}`);
     }
-    if (!fs.existsSync(bakGeneric)) {
+    if (!fs.existsSync(bakGeneric) || fs.statSync(bakGeneric).size === 0) {
         fs.copyFileSync(htmlPath, bakGeneric);
         console.log(`Tạo backup generic: ${bakGeneric}`);
     }
-
-    // Đọc nội dung css & js
-    const cssContent = fs.readFileSync(destCss, 'utf8');
-    const jsContent = fs.readFileSync(destJs, 'utf8');
 
     // Xoá CSP meta tag theo chuẩn be5invis để script/style chạy không bị chặn
     html = html.replace(/<meta\s+http-equiv="Content-Security-Policy"[\s\S]*?\/>/, '');
@@ -237,7 +282,7 @@ if (alreadyInjected) {
         `<script>\n${jsContent}\n</script>\n` +
         `<!-- !! VSCODE-CUSTOM-CSS-END !! -->\n</head>`;
 
-    html = html.replace(/(<\/head>)/, injectHTML);
+    html = html.replace(/(<\/head>)/, () => injectHTML);
 
     fs.writeFileSync(htmlPath, html, 'utf8');
     console.log(`Đã inject Custom CSS & JS vào: ${htmlPath}`);
