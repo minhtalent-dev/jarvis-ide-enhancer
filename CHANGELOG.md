@@ -2,6 +2,12 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.47] - 2026-10-19
+
+### Improved
+- **Nâng cấp độ ổn định và tối ưu hóa hệ thống toàn diện:** Tinh chỉnh cơ chế tự động thích ứng với các bản cập nhật mới của ứng dụng, hoàn thiện tính năng khôi phục một chạm giúp duy trì liên tục trải nghiệm giao diện cao cấp và thanh dòng thời gian mượt mà.
+- **Hoàn thiện bố cục và hiển thị giao diện:** Tối ưu hóa khoảng cách lề và các điểm mốc trực quan trong khung hội thoại, mang lại không gian làm việc cân đối, thoáng đãng và dễ theo dõi.
+
 ## [1.1.46] - 2026-10-15
 
 ### Maintenance & Release
