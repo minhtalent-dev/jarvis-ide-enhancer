@@ -2,7 +2,7 @@
   "name": "jarvis-ide-enhancer",
   "displayName": "JARVIS IDE Enhancer",
   "description": "Enhance VS Code with JARVIS 3D cursor, chat styles, prompt slash intellisense, and UI automation.",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "publisher": "minhtalent-dev",
   "author": "minh <baominh20398@gmail.com>",
   "license": "MIT",

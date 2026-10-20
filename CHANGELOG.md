@@ -2,6 +2,11 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.2.3] - 2026-10-20
+
+### Improved
+- **Tìm lệnh linh hoạt hơn:** Có thể tìm theo một phần tên lệnh hoặc mô tả; ưu tiên kết quả khớp tên và hỗ trợ văn bản có dấu.
+
 ## [1.2.2] - 2026-10-20
 
 ### Added
