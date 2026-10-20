@@ -525,6 +525,48 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     color: var(--vscode-foreground, #e2e8f0) !important;
 }
 
+/* ==========================================================================
+   JARVIS New Local Chat Header Action Button
+   ========================================================================== */
+#jarvis-new-local-chat-action.action-item,
+.jarvis-new-local-chat-action.action-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-right: 2px !important;
+    flex-shrink: 0 !important;
+    min-width: 22px !important;
+}
+
+#jarvis-new-local-chat-action .action-label,
+.jarvis-new-local-chat-action .action-label {
+    color: #c084fc !important;
+    font-size: 15px !important;
+    width: 22px !important;
+    height: 22px !important;
+    border-radius: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    position: relative !important;
+}
+
+#jarvis-new-local-chat-action .action-label:hover,
+.jarvis-new-local-chat-action .action-label:hover {
+    background-color: rgba(192, 132, 252, 0.18) !important;
+    color: #e9d5ff !important;
+    box-shadow: 0 0 2px rgba(192, 132, 252, 0.45) !important;
+}
+
+#jarvis-new-local-chat-action .action-label:active,
+.jarvis-new-local-chat-action .action-label:active {
+    background-color: rgba(192, 132, 252, 0.3) !important;
+    transform: scale(0.96) !important;
+}
+
+
 
 
 

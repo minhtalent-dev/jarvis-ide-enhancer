@@ -58,9 +58,10 @@ const isMultiSlashSuggestPatched = !p2Unpatched.test(content);
 p2Unpatched.lastIndex = 0;
 const isAddCodeEditorPatched = content.includes('window.__codeEditorService=this');
 const isPromptTimelinePatched = !p4aUnpatched.test(content) && !p4bUnpatched.test(content) && !pBfoUnpatched.test(content);
+const isCommandServicePatched = content.includes('window.__commandService=i;');
 
-if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched && isPromptTimelinePatched) {
-    console.log('⚡ Hệ thống đã có đầy đủ 4 bản vá (Intellisense bypass, Multi-slash unblocked, Hook addCodeEditor, Unlock Native Timeline), không cần vá lại.');
+if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched && isPromptTimelinePatched && isCommandServicePatched) {
+    console.log('⚡ Hệ thống đã có đầy đủ 5 bản vá (Intellisense bypass, Multi-slash unblocked, Hook addCodeEditor, Unlock Native Timeline, Hook ICommandService), không cần vá lại.');
     process.exit(0);
 }
 
@@ -121,24 +122,31 @@ try {
         content = content.replace(/this\._domNode\.classList\.toggle\(["']overflowing["'],e<320\)/g, 'this._domNode.classList.toggle("overflowing",!1)');
     }
 
-    // 5. Kiểm tra an toàn: Snippet-Validation & Tính toàn vẹn tệp
+    // 5. Áp dụng Patch 5: Hook ICommandService vào window.__commandService
+    if (content.includes('this.commandService=i;') && !content.includes('window.__commandService=i;')) {
+        console.log('Patch 5: Áp dụng hook ICommandService vào window.__commandService...');
+        content = content.replace('this.commandService=i;', 'this.commandService=i;window.__commandService=i;');
+    }
+
+    // 6. Kiểm tra an toàn: Snippet-Validation & Tính toàn vẹn tệp
     console.log('Kiểm tra cú pháp V8 snippets...');
     new vm.Script('function _test(s,o){return!0}');
     new vm.Script(`(function(e,t){\nthis.widget=e;try{window.__chatInputEditor=e.inputEditor;window.__codeEditorService=t;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e.inputEditor}))}catch(err){}this.codeEditorService=t;\n})`);
     new vm.Script(`(function(e){\ntry{window.__codeEditorService=this;window.__allCodeEditors=window.__allCodeEditors||[];window.__allCodeEditors.push(e);let _d=e.getContainerDomNode&&e.getContainerDomNode();if(_d){_d.__monacoEditor=e;setTimeout(()=>{try{if(_d.closest&&_d.closest('.interactive-input-part,.chat-input-editor,.interactive-input-editor,.chat-input-widget')){window.__chatInputEditor=e;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e}))}}catch(_){}},50)}}catch(_){}\n})`);
     new vm.Script('function wTn(s){return!s.rendersInputOnTop}');
     new vm.Script('(function(eRt){\nlet e = this.configurationService.getValue(eRt)||"gutter";\n})');
+    new vm.Script('(function(i){\nthis.commandService=i;window.__commandService=i;\n})');
 
     if (!content || content.length < 5000000) {
         throw new Error(`File size anomaly (${content ? content.length : 0} bytes)`);
     }
     console.log('=> Cú pháp V8 snippets và toàn vẹn tệp hợp lệ 100%!');
 
-    // 6. Ghi file
+    // 7. Ghi file
     fs.writeFileSync(jsPath, content, 'utf8');
     console.log(`Đã ghi file: ${jsPath}`);
 
-    // 7. Xác minh file chứa cả 4 patch
+    // 8. Xác minh file chứa cả 5 patch
     const verified = fs.readFileSync(jsPath, 'utf8');
     p2Unpatched.lastIndex = 0;
     const vPatch1 = !p1Unpatched.test(verified) && !pVnUnpatched.test(verified);
@@ -147,14 +155,16 @@ try {
     p4aUnpatched.lastIndex = 0;
     p4bUnpatched.lastIndex = 0;
     const vPatch4 = !p4aUnpatched.test(verified) && !p4bUnpatched.test(verified);
+    const vPatch5 = verified.includes('window.__commandService=i;');
 
     console.log('=== KẾT QUẢ XÁC MINH ===');
     console.log('Patch 1 (Pge/Tme return!0):', vPatch1 ? 'THÀNH CÔNG' : 'THẤT BÀI');
     console.log('Patch 2 (Multi-slash unblocked):', vPatch2 ? 'THÀNH CÔNG' : 'THẤT BÀI');
     console.log('Patch 3 (Hook addCodeEditor):', vPatch3 ? 'THÀNH CÔNG' : 'THẤT BÀI');
     console.log('Patch 4 (Unlock Native Timeline):', vPatch4 ? 'THÀNH CÔNG' : 'THẤT BÀI');
+    console.log('Patch 5 (Hook ICommandService):', vPatch5 ? 'THÀNH CÔNG' : 'THẤT BÀI');
 
-    if (!vPatch1 || !vPatch2 || !vPatch3 || !vPatch4) {
+    if (!vPatch1 || !vPatch2 || !vPatch3 || !vPatch4 || !vPatch5) {
         throw new Error('Xác minh thất bại');
     }
 

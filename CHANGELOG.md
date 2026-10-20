@@ -2,6 +2,16 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.1.49] - 2026-10-19
+
+### Fixed
+- **Khắc phục vị trí hiển thị nút New Local Chat:** Nâng cấp thuật toán định vị phần tử trực tiếp (Direct-Anchor Finding) trên thanh tiêu đề cửa sổ phụ (Auxiliary Bar) và các thanh công cụ thu gọn, đảm bảo nút biểu tượng luôn xuất hiện chuẩn xác ngay cạnh nút tạo phiên trò chuyện trên mọi bố cục giao diện.
+
+## [1.1.48] - 2026-10-19
+
+### Added
+- **Nút mở nhanh phiên trò chuyện cục bộ (New Local Chat):** Bổ sung nút biểu tượng chuyên dụng ngay cạnh nút tạo phiên chat mới trên thanh tiêu đề, cho phép mở nhanh phiên làm việc cục bộ với toàn quyền thực thi tự động (Allow all) chỉ với một cú click chuột.
+
 ## [1.1.47] - 2026-10-19
 
 ### Improved

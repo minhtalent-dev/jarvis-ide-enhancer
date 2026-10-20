@@ -570,6 +570,7 @@
     if (typeof document !== 'undefined') {
         document.addEventListener('focusin', () => {
             findAndAttachChatEditor();
+            injectNewLocalChatButton();
         }, true);
     }
 
@@ -843,6 +844,194 @@
         }
     }
 
+    /**
+     * Mô phỏng chuỗi sự kiện click chuột đầy đủ
+     */
+    function triggerFullClick(el) {
+        if (!el) return;
+        const opts = { bubbles: true, cancelable: true, view: window, buttons: 1, button: 0 };
+        try { el.dispatchEvent(new PointerEvent('pointerdown', opts)); } catch (_) {}
+        try { el.dispatchEvent(new MouseEvent('mousedown', opts)); } catch (_) {}
+        try { el.dispatchEvent(new PointerEvent('pointerup', opts)); } catch (_) {}
+        try { el.dispatchEvent(new MouseEvent('mouseup', opts)); } catch (_) {}
+        try { el.dispatchEvent(new MouseEvent('click', opts)); } catch (_) {}
+        try { if (typeof el.click === 'function') el.click(); } catch (_) {}
+    }
+
+    function selectMenuItemByKeywords(keywords) {
+        const shadowRoots = Array.from(document.querySelectorAll('.shadow-root-host')).map(h => h.shadowRoot).filter(Boolean);
+        const searchScopes = [document, ...shadowRoots];
+        for (const scope of searchScopes) {
+            try {
+                const items = Array.from(scope.querySelectorAll(
+                    '.context-view .monaco-list-row, .context-view [role="menuitem"], .context-view .action-item, [role="menuitem"], .action-menu-item, .monaco-menu-container .action-item'
+                ));
+                for (const item of items) {
+                    const text = (item.textContent || '').trim().toLowerCase();
+                    const aria = (item.getAttribute('aria-label') || '').toLowerCase();
+                    const title = (item.getAttribute('title') || '').toLowerCase();
+                    const matches = keywords.some(k => text.includes(k) || aria.includes(k) || title.includes(k));
+                    if (matches) {
+                        const clickTarget = item.querySelector('a, button, [role="menuitem"]') || item;
+                        triggerFullClick(clickTarget);
+                        return true;
+                    }
+                }
+            } catch (_) {}
+        }
+        return false;
+    }
+
+    /**
+     * Tự động kiểm tra và chuyển session sang Local và phân quyền Allow All nếu chưa được bật
+     */
+    function ensureLocalAndAutoApprove() {
+        if (typeof document === 'undefined') return;
+
+        const checkAndFix = () => {
+            // 1. Kiểm tra session picker chip ở footer
+            const sessionChips = Array.from(document.querySelectorAll(
+                '.chat-session-target-picker-item a.action-label, .chat-sessionPicker-item, [class*="sessionPicker"] a, .chat-session-picker a'
+            ));
+            for (const chip of sessionChips) {
+                const txt = (chip.textContent || '').trim().toLowerCase();
+                const aria = (chip.getAttribute('aria-label') || '').toLowerCase();
+                if (txt && !txt.includes('local') && !aria.includes('local')) {
+                    triggerFullClick(chip);
+                    setTimeout(() => {
+                        selectMenuItemByKeywords(['local']);
+                    }, 60);
+                    break;
+                }
+            }
+
+            // 2. Kiểm tra permission chip ở footer
+            const permissionChips = Array.from(document.querySelectorAll(
+                '[aria-label*="Permission picker" i] a, .chat-input-picker-item a.action-label[aria-label*="Permission" i], [class*="permission"] a.action-label'
+            ));
+            for (const chip of permissionChips) {
+                const txt = (chip.textContent || '').trim().toLowerCase();
+                const aria = (chip.getAttribute('aria-label') || '').toLowerCase();
+                if (!txt.includes('allow all') && !aria.includes('allow all') && !chip.classList.contains('info')) {
+                    triggerFullClick(chip);
+                    setTimeout(() => {
+                        selectMenuItemByKeywords(['allow all', 'autoapprove', 'auto-approve', 'tự động phê duyệt']);
+                    }, 60);
+                    break;
+                }
+            }
+        };
+
+        [100, 300, 700, 1500].forEach((delay) => {
+            setTimeout(checkAndFix, delay);
+        });
+    }
+
+    /**
+     * Xử lý click nút New Local Chat: mở New Chat ngay lập tức và đảm bảo Local + Allow all
+     */
+    function handleNewLocalChatClick(plusItem) {
+        console.log('[JARVIS] New Local Chat button clicked!');
+        if (typeof document === 'undefined') return;
+
+        // 1. Focus ô nhập liệu để đưa focus về Chat view
+        try {
+            if (window.__chatInputEditor && typeof window.__chatInputEditor.focus === 'function') {
+                window.__chatInputEditor.focus();
+            } else {
+                const inputDom = document.querySelector('.interactive-input-editor .monaco-editor, .chat-input-editor .monaco-editor');
+                if (inputDom) triggerFullClick(inputDom);
+            }
+        } catch (_) {}
+
+        // 2. Xác định nút New Chat (+) và kích hoạt trực tiếp
+        let plusTarget = null;
+        if (plusItem) {
+            plusTarget = plusItem.querySelector('.action-container')
+                || plusItem.querySelector('a.codicon-plus')
+                || plusItem.querySelector('[aria-label*="New Chat"]')
+                || plusItem;
+        } else {
+            plusTarget = document.querySelector('.monaco-toolbar .action-item:has(.codicon-plus) .action-container')
+                || document.querySelector('.monaco-toolbar .codicon-plus')?.closest('.action-item')
+                || document.querySelector('.monaco-toolbar .codicon-plus');
+        }
+
+        if (plusTarget) {
+            console.log('[JARVIS] Triggering click on New Chat action:', plusTarget);
+            triggerFullClick(plusTarget);
+            const innerAnchor = plusTarget.querySelector('a.codicon-plus') || (plusTarget.matches('a') ? plusTarget : null);
+            if (innerAnchor && innerAnchor !== plusTarget) {
+                triggerFullClick(innerAnchor);
+            }
+        }
+
+        // 3. Fallback qua CommandService nếu có
+        if (window.__commandService && typeof window.__commandService.executeCommand === 'function') {
+            try {
+                window.__commandService.executeCommand('workbench.action.chat.newChat').catch(() => {});
+            } catch (_) {}
+        }
+
+        // 4. Đảm bảo session chuyển sang Local và Allow All
+        ensureLocalAndAutoApprove();
+    }
+
+    /**
+     * Tự động tiêm nút New Local Chat (Allow All) vào thanh công cụ Chat Header
+     */
+    function injectNewLocalChatButton() {
+        if (typeof document === 'undefined') return;
+
+        const plusIcons = Array.from(document.querySelectorAll(
+            '.monaco-toolbar .codicon-plus, .monaco-toolbar [aria-label*="New Chat"], .monaco-toolbar [title*="New Chat"]'
+        ));
+
+        plusIcons.forEach((plusEl) => {
+            if (plusEl.closest('.hidden, [style*="display: none"], [style*="visibility: hidden"], .pane-header.hidden')) {
+                return;
+            }
+
+            let chatScope = null;
+            try {
+                chatScope = plusEl.closest(
+                    '#workbench\\.parts\\.auxiliarybar, #workbench\\.parts\\.sidebar, .chat-viewpane-container, .interactive-session, .chat-editor, [data-active-composite*="chat"], .composite.title:has([aria-label*="Chat"]), .pane-composite-part:has([data-active-composite*="chat"])'
+                );
+            } catch (_) {
+                chatScope = plusEl.closest(
+                    '#workbench\\.parts\\.auxiliarybar, #workbench\\.parts\\.sidebar, .chat-viewpane-container, .interactive-session, .chat-editor, [data-active-composite*="chat"]'
+                );
+            }
+            if (!chatScope) return;
+
+            const plusItem = plusEl.closest('.action-item');
+            if (!plusItem || !plusItem.parentNode) return;
+
+            if (plusItem.parentNode.querySelector('.jarvis-new-local-chat-action, #jarvis-new-local-chat-action')) return;
+
+            const li = document.createElement('li');
+            li.className = 'action-item jarvis-new-local-chat-item jarvis-new-local-chat-action';
+            li.id = 'jarvis-new-local-chat-action';
+            li.setAttribute('role', 'presentation');
+
+            const a = document.createElement('a');
+            a.className = 'action-label codicon codicon-device-desktop';
+            a.setAttribute('role', 'button');
+            a.setAttribute('tabindex', '0');
+            a.setAttribute('title', 'New Local Chat (Allow All) [JARVIS]');
+            a.setAttribute('aria-label', 'New Local Chat (Allow All) [JARVIS]');
+
+            a.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleNewLocalChatClick(plusItem);
+            });
+
+            li.appendChild(a);
+            plusItem.parentNode.insertBefore(li, plusItem);
+        });
+    }
+
     if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
         const historyObserver = new MutationObserver((mutations) => {
             if (scanAndDecorateHistory._isDecorating) return;
@@ -856,6 +1045,7 @@
             if (shouldScan) {
                 scheduleScanAndDecorateHistory();
                 scheduleEvaluateEmptyCodeBlocks();
+                injectNewLocalChatButton();
             }
         });
 
@@ -866,6 +1056,7 @@
                 scheduleScanAndDecorateHistory();
                 scheduleEvaluateEmptyCodeBlocks();
                 findAndAttachChatEditor();
+                injectNewLocalChatButton();
             }
         };
 
@@ -873,10 +1064,12 @@
             document.addEventListener('DOMContentLoaded', () => {
                 startObserver();
                 findAndAttachChatEditor();
+                injectNewLocalChatButton();
             });
         } else {
             startObserver();
             findAndAttachChatEditor();
+            injectNewLocalChatButton();
         }
     }
 
@@ -884,6 +1077,9 @@
         setInterval(() => {
             scheduleEvaluateEmptyCodeBlocks();
         }, 2000);
+        setInterval(() => {
+            injectNewLocalChatButton();
+        }, 1000);
     }
 
     /**

@@ -428,6 +428,8 @@ async function syncSetup(context, silent = false) {
         await safeUpdate('vscode_custom_css.imports', newImports);
         await safeUpdate('chat.progressBorder.enabled', true);
         await safeUpdate('chat.requestQueuing.defaultAction', 'queue');
+        await safeUpdate('chat.permissions.default', 'autoApprove');
+        await safeUpdate('chat.tools.global.autoApprove', true);
         await safeUpdate('editor.cursorSmoothCaretAnimation', 'on');
         await safeUpdate('workbench.reduceMotion', 'off');
         await safeUpdate('sessions.chatTimeline.display', 'gutter');
@@ -636,8 +638,9 @@ async function patchIntellisense(silent = false) {
         p2Unpatched.lastIndex = 0;
         const isAddCodeEditorPatched = content.includes('window.__codeEditorService=this');
         const isPromptTimelinePatched = !p4aUnpatched.test(content) && !p4bUnpatched.test(content) && !pBfoUnpatched.test(content);
+        const isCommandServicePatched = content.includes('window.__commandService=i;');
 
-        if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched && isPromptTimelinePatched) {
+        if (isTmePatched && isMultiSlashSuggestPatched && isAddCodeEditorPatched && isPromptTimelinePatched && isCommandServicePatched) {
             if (logger) logger.info('Core đã có đầy đủ patch, bỏ qua việc sửa file bundle.');
             autoPurgeV8Cache();
             if (!silent) {
@@ -708,6 +711,12 @@ async function patchIntellisense(silent = false) {
             if (logger) logger.info('Đã gỡ bỏ class overflowing khi chat hẹp (Patch 4e).');
         }
 
+        // Patch 5: Hook ICommandService vào window.__commandService
+        if (content.includes('this.commandService=i;') && !content.includes('window.__commandService=i;')) {
+            content = content.replace('this.commandService=i;', 'this.commandService=i;window.__commandService=i;');
+            if (logger) logger.info('Đã hook ICommandService vào window.__commandService (Patch 5).');
+        }
+
         // Kiểm tra an toàn trước khi ghi: Snippet-Validation & Tính toàn vẹn tệp
         try {
             // 1. Kiểm tra cú pháp V8 trực tiếp của các đoạn mã được vá
@@ -716,6 +725,7 @@ async function patchIntellisense(silent = false) {
             new vm.Script(`(function(e){\ntry{window.__codeEditorService=this;window.__allCodeEditors=window.__allCodeEditors||[];window.__allCodeEditors.push(e);let _d=e.getContainerDomNode&&e.getContainerDomNode();if(_d){_d.__monacoEditor=e;setTimeout(()=>{try{if(_d.closest&&_d.closest('.interactive-input-part,.chat-input-editor,.interactive-input-editor,.chat-input-widget')){window.__chatInputEditor=e;window.dispatchEvent(new CustomEvent('chat-editor-ready',{detail:e}))}}catch(_){}},50)}}catch(_){}\n})`);
             new vm.Script('function wTn(s){return!s.rendersInputOnTop}');
             new vm.Script('(function(eRt){\nlet e = this.configurationService.getValue(eRt)||"gutter";\n})');
+            new vm.Script('(function(i){\nthis.commandService=i;window.__commandService=i;\n})');
 
             // 2. Kiểm tra tính toàn vẹn tệp (chống ghi đè rỗng hoặc hỏng file)
             if (!content || content.length < 5000000) {
@@ -1136,6 +1146,17 @@ function activate(context) {
             }
         }),
         vscode.commands.registerCommand('jarvisEnhancer.masterRestore', () => masterSyncAndPatchAll(context, false)),
+        vscode.commands.registerCommand('jarvisEnhancer.newLocalChat', async () => {
+            try {
+                await vscode.commands.executeCommand('workbench.action.chat.newLocalChat');
+            } catch (_) {
+                try {
+                    await vscode.commands.executeCommand('workbench.action.chat.openNewChatSessionInPlace.local', 'sidebar');
+                } catch (_2) {
+                    await vscode.commands.executeCommand('workbench.action.chat.newChat');
+                }
+            }
+        }),
         vscode.commands.registerCommand('jarvisEnhancer.syncSetup', () => masterSyncAndPatchAll(context, false)),
         vscode.commands.registerCommand('jarvisEnhancer.discoverMacros', () => syncMacros(context, false)),
         vscode.commands.registerCommand('jarvisEnhancer.patchIntellisense', () => masterSyncAndPatchAll(context, false)),
