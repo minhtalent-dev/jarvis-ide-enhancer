@@ -2,6 +2,17 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.2.2] - 2026-10-20
+
+### Added
+- **Gợi ý MCP khi nhập lệnh `/`:** Tự động đọc danh sách MCP server từ cấu hình VS Code và hiển thị token `/mcp:<name>` trong popup autocomplete.
+- **Nhận diện MCP trực quan:** Token MCP có màu Amber Glow riêng, phân biệt với lệnh Slash màu xanh dương và Macro màu tím Neon.
+- **Đồng bộ tự động:** Tự cập nhật danh sách MCP khi file cấu hình thay đổi, không cần khởi động lại VS Code.
+
+### Improved
+- **Bảo vệ thông tin kết nối:** Chỉ hiển thị tên và nhóm chức năng MCP; không đưa mật khẩu, connection string hay API key vào giao diện.
+- **Hỗ trợ tên MCP dạng namespace:** Chuẩn hóa tên có dấu `/` thành token an toàn, không làm vỡ hiển thị pill.
+
 ## [1.2.1] - 2026-10-20
 
 ### Added

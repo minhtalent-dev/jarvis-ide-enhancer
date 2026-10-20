@@ -227,7 +227,9 @@
             itemEl.className = 'jarvis-macro-item' + (idx === selectedIdx ? ' selected' : '');
 
             const tokenSpan = document.createElement('span');
-            tokenSpan.className = m.token.startsWith('/') ? 'jarvis-slash-token' : 'jarvis-macro-token';
+            tokenSpan.className = m.token.startsWith('/mcp:')
+                ? 'jarvis-mcp-token'
+                : (m.token.startsWith('/') ? 'jarvis-slash-token' : 'jarvis-macro-token');
             tokenSpan.textContent = m.token;
 
             const descSpan = document.createElement('span');
@@ -449,6 +451,7 @@
                     const subStart = m.index + m[0].lastIndexOf(m[1]);
                     const p1 = model.getPositionAt(subStart);
                     const p2 = model.getPositionAt(subStart + m[1].length);
+                    const isMcp = m[1].startsWith('/mcp:');
                     newDecos.push({
                         range: {
                             startLineNumber: p1.lineNumber,
@@ -457,8 +460,8 @@
                             endColumn: p2.column
                         },
                         options: {
-                            description: 'custom-slash-command-pill',
-                            inlineClassName: 'custom-wf-pill'
+                            description: isMcp ? 'custom-mcp-command-pill' : 'custom-slash-command-pill',
+                            inlineClassName: isMcp ? 'custom-mcp-pill' : 'custom-wf-pill'
                         }
                     });
                 }
@@ -632,7 +635,7 @@
                     }
                     const parent = node.parentElement;
                     if (!parent) return NodeFilter.FILTER_REJECT;
-                    if (parent.closest('.custom-wf-pill, .custom-backtick-pill, code, pre')) {
+                    if (parent.closest('.custom-wf-pill, .custom-backtick-pill, .custom-mcp-pill, code, pre')) {
                         return NodeFilter.FILTER_REJECT;
                     }
                     return NodeFilter.FILTER_ACCEPT;
@@ -702,7 +705,7 @@
                     }
                     if (item.type === 'slash') {
                         const span = document.createElement('span');
-                        span.className = 'custom-wf-pill';
+                        span.className = item.token.startsWith('/mcp:') ? 'custom-mcp-pill' : 'custom-wf-pill';
                         span.textContent = item.token;
                         frag.appendChild(span);
                     } else if (item.type === 'backtick') {

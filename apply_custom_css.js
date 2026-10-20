@@ -84,6 +84,88 @@ function loadOrScanMacros() {
     return macros;
 }
 
+/**
+ * Quét tự động danh sách MCP servers từ mcp.json (Profile + Global User)
+ * Chỉ trích xuất tên server và phân loại công nghệ — tuyệt đối không đọc env/args (bảo mật).
+ */
+function discoverMcpCommands() {
+    const mcpMap = new Map();
+    const candidates = [];
+    const home = os.homedir();
+    const codeUser = process.platform === 'win32'
+        ? path.join(home, 'AppData', 'Roaming', 'Code', 'User')
+        : path.join(home, '.config', 'Code', 'User');
+
+    const profilesDir = path.join(codeUser, 'profiles');
+    if (fs.existsSync(profilesDir)) {
+        try {
+            const profiles = fs.readdirSync(profilesDir, { withFileTypes: true });
+            for (const p of profiles) {
+                if (p.isDirectory()) {
+                    candidates.push(path.join(profilesDir, p.name, 'mcp.json'));
+                }
+            }
+        } catch (e) {}
+    }
+    candidates.push(path.join(codeUser, 'mcp.json'));
+
+    for (const mcpPath of candidates) {
+        if (!fs.existsSync(mcpPath)) continue;
+        try {
+            const raw = fs.readFileSync(mcpPath, 'utf8');
+            const data = JSON.parse(raw);
+            if (data && data.servers && typeof data.servers === 'object') {
+                for (const name of Object.keys(data.servers)) {
+                    let desc = `[MCP] Server ${name}`;
+                    const lower = name.toLowerCase();
+                    if (lower.includes('postgres') || lower.includes('mssql') || lower.includes('oracle') || (lower.includes('db') && !lower.includes('guidance'))) {
+                        desc = `[MCP:DB] Quản trị & truy vấn cơ sở dữ liệu (${name})`;
+                    } else if (lower.includes('playwright')) {
+                        desc = `[MCP:E2E] Tự động hóa & kiểm thử trình duyệt web`;
+                    } else if (lower.includes('search') || lower.includes('brave')) {
+                        desc = `[MCP:Web] Tra cứu Internet & tài liệu trực tuyến`;
+                    } else if (lower.includes('context7')) {
+                        desc = `[MCP:Docs] Tra cứu tài liệu thư viện mã nguồn`;
+                    } else if (lower.includes('sequential')) {
+                        desc = `[MCP:Logic] Tư duy tuần tự bẻ nhỏ logic phức tạp`;
+                    } else if (lower.includes('memory')) {
+                        desc = `[MCP:Brain] Đồ thị tri thức & bộ nhớ dự án`;
+                    } else if (lower.includes('filesy') || lower.includes('filesystem')) {
+                        desc = `[MCP:File] Thao tác tệp tin cục bộ an toàn`;
+                    } else if (lower.includes('markitdown')) {
+                        desc = `[MCP:Tool] Chuyển đổi định dạng tệp sang Markdown`;
+                    } else if (lower.includes('minit')) {
+                        desc = `[MCP:Flow] Điều phối quy trình MinIT IT Factory`;
+                    } else if (lower.includes('guidance')) {
+                        desc = `[MCP:Agent] Wrapper hướng dẫn hành vi Agent`;
+                    }
+
+                    // Chuẩn hóa token: tên server chứa '/' sẽ làm vỡ regex pill -> rút gọn + alias an toàn
+                    if (name.includes('/')) {
+                        const shortName = name.split('/').pop();
+                        const primaryToken = '/mcp:' + shortName;
+                        if (!mcpMap.has(primaryToken)) {
+                            mcpMap.set(primaryToken, { token: primaryToken, desc: `${desc} [${name}]` });
+                        }
+                        const safeFullName = '/mcp:' + name.replace(/\//g, '-');
+                        if (!mcpMap.has(safeFullName)) {
+                            mcpMap.set(safeFullName, { token: safeFullName, desc });
+                        }
+                    } else {
+                        const token = '/mcp:' + name;
+                        if (!mcpMap.has(token)) {
+                            mcpMap.set(token, { token, desc });
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn(`Lỗi khi đọc ${mcpPath}: ${err.message}`);
+        }
+    }
+    return Array.from(mcpMap.values());
+}
+
 // 1.1. Quét slash commands từ skills (~/.agents/skills, ~/.copilot/skills, ~/.claude/skills)
 function loadOrScanSlashCommands() {
     const list = [
@@ -129,6 +211,13 @@ function loadOrScanSlashCommands() {
                 }
             }
         } catch (e) {}
+    }
+
+    // Gộp danh sách MCP servers từ mcp.json (token dạng /mcp:<name>)
+    for (const mcp of discoverMcpCommands()) {
+        if (mcp && mcp.token && !map.has(mcp.token)) {
+            map.set(mcp.token, mcp);
+        }
     }
     return Array.from(map.values());
 }

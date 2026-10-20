@@ -224,6 +224,32 @@ div[class*="request"] .rendered-markdown .custom-wf-pill,
     display: inline !important;
 }
 
+/* MCP server pill (Chat Input + Chat History, Luxury Amber Glow) */
+.monaco-editor .custom-mcp-pill,
+.interactive-session .request .rendered-markdown .custom-mcp-pill,
+.interactive-request .rendered-markdown .custom-mcp-pill,
+.chat-item.request .rendered-markdown .custom-mcp-pill,
+.monaco-list-row.request .rendered-markdown .custom-mcp-pill,
+[data-index].request .rendered-markdown .custom-mcp-pill,
+.chat-row.request .rendered-markdown .custom-mcp-pill,
+.chat-request .rendered-markdown .custom-mcp-pill,
+div[class*="request"] .rendered-markdown .custom-mcp-pill,
+[class*="queued"] .rendered-markdown .custom-mcp-pill {
+    background-color: rgba(250, 179, 135, 0.22) !important;
+    color: #fab387 !important;
+    border: 1px solid rgba(250, 179, 135, 0.45) !important;
+    border-radius: 3px !important;
+    padding: 0 3px !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 0 6px rgba(250, 179, 135, 0.25) !important;
+    display: inline !important;
+}
+
+.custom-mcp-pill::before,
+.custom-mcp-pill::after {
+    content: none !important;
+}
+
 /* Backtick command pill (Chat Input + Chat History) */
 .monaco-editor .custom-backtick-pill,
 .interactive-session .request .rendered-markdown .custom-backtick-pill,
@@ -320,6 +346,17 @@ div[class*="request"] .rendered-markdown .custom-backtick-pill,
     font-family: inherit !important;
     background-color: var(--vscode-chat-slashCommandBackground, rgba(38, 71, 120, 0.4)) !important;
     border: 1px solid rgba(137, 180, 250, 0.4) !important;
+    border-radius: 3px !important;
+    padding: 1px 4px !important;
+    white-space: nowrap !important;
+}
+
+.jarvis-mcp-token {
+    color: #fab387 !important;
+    font-weight: 600 !important;
+    font-family: inherit !important;
+    background-color: rgba(250, 179, 135, 0.15) !important;
+    border: 1px solid rgba(250, 179, 135, 0.4) !important;
     border-radius: 3px !important;
     padding: 1px 4px !important;
     white-space: nowrap !important;
