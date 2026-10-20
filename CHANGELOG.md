@@ -2,6 +2,17 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.2.1] - 2026-10-20
+
+### Added
+- **Nút mở nhanh phiên trò chuyện cục bộ (New Local Chat):** Bổ sung nút chuyên dụng ngay trên thanh tiêu đề cửa sổ chat, cho phép khởi tạo phiên làm việc cục bộ với toàn quyền thực thi tự động chỉ bằng một cú click.
+- **Tự động cấp quyền thực thi đầy đủ (Auto Allow All):** Phiên trò chuyện cục bộ mới tạo được tự động kích hoạt chế độ cho phép toàn bộ công cụ và lệnh, loại bỏ thao tác duyệt thủ công.
+
+### Improved
+- **Nâng cấp thuật toán định vị phần tử giao diện:** Áp dụng cơ chế tìm kiếm trực tiếp (Direct-Anchor Finding) giúp nút biểu tượng luôn hiển thị chính xác trên mọi bố cục, kể cả khi thanh công cụ ở trạng thái thu gọn hoặc ẩn.
+- **Tối ưu tương tác bấm nút trên thanh công cụ:** Cải thiện chuỗi sự kiện nhấn chuột đầy đủ, đảm bảo thao tác phản hồi mượt mà và tương thích với mọi phiên bản giao diện.
+- **Củng cố hệ thống tự phục hồi và đồng bộ cấu hình:** Hoàn thiện cơ chế tự động phát hiện và sửa chữa khi ứng dụng được cập nhật, duy trì trải nghiệm ổn định liên tục.
+
 ## [1.1.49] - 2026-10-19
 
 ### Fixed
