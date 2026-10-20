@@ -293,6 +293,47 @@
         popup.style.top = `${Math.round(top)}px`;
     }
 
+    // AUTOCOMPLETE_SEARCH_HELPER_START
+    function filterSlashCommands(commands, rawToken) {
+        const safeString = (value) => {
+            try {
+                return value == null ? '' : String(value);
+            } catch (err) {
+                return '';
+            }
+        };
+        let query = safeString(rawToken).replace(/^\//, '').replace(/^mcp:/i, '');
+        query = query.normalize('NFC').toLowerCase();
+
+        const ranked = [];
+        if (!Array.isArray(commands)) return [];
+
+        commands.forEach((command, index) => {
+            if (!command || typeof command !== 'object' || typeof command.token !== 'string') return;
+
+            const normalizedToken = command.token.replace(/^\//, '').normalize('NFC').toLowerCase();
+            const tokenBody = normalizedToken.replace(/^mcp:/, '');
+            if (!query) {
+                ranked.push({ command, index, rank: 0 });
+                return;
+            }
+
+            let rank = -1;
+            if (tokenBody.startsWith(query)) {
+                rank = 0;
+            } else if (normalizedToken.includes(query)) {
+                rank = 1;
+            } else if (safeString(command.desc).normalize('NFC').toLowerCase().includes(query)) {
+                rank = 2;
+            }
+            if (rank !== -1) ranked.push({ command, index, rank });
+        });
+
+        ranked.sort((left, right) => left.rank - right.rank || left.index - right.index);
+        return ranked.slice(0, 50).map((entry) => entry.command);
+    }
+    // AUTOCOMPLETE_SEARCH_HELPER_END
+
     function setupMacroAutocomplete(editor) {
         if (!editor || editor.__macroAutocompleteAttached) return;
         editor.__macroAutocompleteAttached = true;
@@ -335,7 +376,7 @@
                 const prefix = rawToken.toLowerCase();
                 let matched = [];
                 if (rawToken.startsWith('/')) {
-                    matched = getActiveSlashCommands().filter((m) => m.token.toLowerCase().startsWith(prefix));
+                    matched = filterSlashCommands(getActiveSlashCommands(), rawToken);
                 } else {
                     matched = getActiveMacros().filter((m) => m.token.toLowerCase().startsWith(prefix));
                 }

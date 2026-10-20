@@ -24,7 +24,7 @@
 
 ## 3. Tasks Breakdown
 
-- [ ] **Task P01.1: Xây dựng hàm helper `discoverMcpCommands()` chuẩn hóa an toàn**
+- [x] **Task P01.1: Xây dựng hàm helper `discoverMcpCommands()` chuẩn hóa an toàn**
   - Files: `extension.js`, `apply_custom_css.js`
   - Chi tiết:
     - Tìm file `mcp.json` theo thứ tự ưu tiên: Active Profile Dir (qua `profiles/*`), Global User Dir (`AppData/Roaming/Code/User`), Workspace (`.vscode/mcp.json`).
@@ -126,13 +126,13 @@
     }
     ```
 
-- [ ] **Task P01.2: Tích hợp MCP vào `discoverSlashCommands()` và `loadOrScanSlashCommands()`**
+- [x] **Task P01.2: Tích hợp MCP vào `discoverSlashCommands()` và `loadOrScanSlashCommands()`**
   - Files: `extension.js`, `apply_custom_css.js`
   - Chi tiết:
     - Gọi `discoverMcpCommands()` bên trong `discoverSlashCommands()` (`extension.js`) và `loadOrScanSlashCommands()` (`apply_custom_css.js`).
     - Nạp toàn bộ danh sách MCP vào `map` slash commands sau các lệnh mặc định và skills.
 
-- [ ] **Task P01.3: Cài đặt Realtime File Watcher cho `mcp.json`**
+- [x] **Task P01.3: Cài đặt Realtime File Watcher cho `mcp.json`**
   - Files: `extension.js`
   - Chi tiết:
     - Trong hàm `setupExternalPromptWatchers(context)` hoặc hàm khởi tạo, đăng ký thêm watcher theo dõi đường dẫn chứa `mcp.json`.
