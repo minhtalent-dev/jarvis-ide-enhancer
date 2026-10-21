@@ -60,62 +60,77 @@
         ed.focus();
     }
 
+    let _isInjectingChips = false;
     function injectQuickActionChips() {
-        if (typeof document === 'undefined') return;
-        const editor = window.__chatInputEditor;
-        const editorDom = editor && ((editor.getDomNode && editor.getDomNode()) || (editor.getContainerDomNode && editor.getContainerDomNode()));
-        const container = (editorDom && editorDom.closest && editorDom.closest('.interactive-input-part, .chat-input-widget, .chat-input-container')) ||
-            document.querySelector('.interactive-input-part, .chat-input-widget, .chat-input-container');
-        if (!container) return;
+        if (_isInjectingChips || typeof document === 'undefined') return;
+        _isInjectingChips = true;
+        try {
+            const editor = window.__chatInputEditor;
+            const editorDom = editor && ((editor.getDomNode && editor.getDomNode()) || (editor.getContainerDomNode && editor.getContainerDomNode()));
+            const container = (editorDom && editorDom.closest && editorDom.closest('.interactive-input-part, .chat-input-widget, .chat-input-container')) ||
+                document.querySelector('.interactive-input-part, .chat-input-widget, .chat-input-container');
+            if (!container) return;
 
-        const chips = getQuickChips();
-        const signature = JSON.stringify(chips);
-        let bar = document.getElementById('jarvis-quick-chips-bar');
-        if (bar && bar.dataset.quickChipsSignature === signature) return;
-        if (!bar) {
-            bar = document.createElement('div');
-            bar.className = 'jarvis-quick-chips-bar';
-            bar.id = 'jarvis-quick-chips-bar';
-            const editorNode = container.querySelector('.chat-input-editor, .interactive-input-editor');
-            container.insertBefore(bar, editorNode || container.firstChild);
-        } else {
-            while (bar.firstChild) bar.removeChild(bar.firstChild);
-        }
+            const chips = getQuickChips();
+            const signature = JSON.stringify(chips);
+            let bar = document.getElementById('jarvis-quick-chips-bar');
+            if (bar && bar.dataset.quickChipsSignature === signature && bar.parentElement === container) return;
+            if (!bar) {
+                bar = document.createElement('div');
+                bar.className = 'jarvis-quick-chips-bar';
+                bar.id = 'jarvis-quick-chips-bar';
+                const editorNode = container.querySelector('.chat-input-editor, .interactive-input-editor');
+                container.insertBefore(bar, editorNode || container.firstChild);
+            } else {
+                while (bar.firstChild) bar.removeChild(bar.firstChild);
+            }
 
-        for (const chip of chips) {
-            if (!chip || !chip.label || !chip.token) continue;
-            const button = document.createElement('button');
-            button.className = 'jarvis-quick-chip';
-            button.type = 'button';
-            button.textContent = chip.label;
-            button.title = chip.desc || chip.token;
-            button.addEventListener('mousedown', (event) => event.preventDefault());
-            button.addEventListener('click', () => handleQuickChipClick(chip));
-            button.addEventListener('contextmenu', (event) => {
-                event.preventDefault();
+            for (const chip of chips) {
+                if (!chip || !chip.label || !chip.token) continue;
+                const button = document.createElement('button');
+                button.className = 'jarvis-quick-chip';
+                button.type = 'button';
+                button.textContent = chip.label;
+                button.title = chip.desc || chip.token;
+                button.addEventListener('mousedown', (event) => event.preventDefault());
+                button.addEventListener('click', () => handleQuickChipClick(chip));
+                button.addEventListener('contextmenu', (event) => {
+                    event.preventDefault();
+                    if (window.__commandService) {
+                        window.__commandService.executeCommand('jarvisEnhancer.manageQuickChips');
+                    }
+                });
+                bar.appendChild(button);
+            }
+
+            const addButton = document.createElement('button');
+            addButton.className = 'jarvis-quick-chip-add';
+            addButton.type = 'button';
+            addButton.title = 'Quản lý Quick Chips (Thêm/Xóa/Reset)';
+            addButton.textContent = '+';
+            addButton.addEventListener('mousedown', (event) => event.preventDefault());
+            addButton.addEventListener('click', () => {
                 if (window.__commandService) {
                     window.__commandService.executeCommand('jarvisEnhancer.manageQuickChips');
                 }
             });
-            bar.appendChild(button);
+            bar.appendChild(addButton);
+            bar.dataset.quickChipsSignature = signature;
+        } catch (_) {} finally {
+            _isInjectingChips = false;
         }
-
-        const addButton = document.createElement('button');
-        addButton.className = 'jarvis-quick-chip-add';
-        addButton.type = 'button';
-        addButton.title = 'Quản lý Quick Chips (Thêm/Xóa/Reset)';
-        addButton.textContent = '+';
-        addButton.addEventListener('mousedown', (event) => event.preventDefault());
-        addButton.addEventListener('click', () => {
-            if (window.__commandService) {
-                window.__commandService.executeCommand('jarvisEnhancer.manageQuickChips');
-            }
-        });
-        bar.appendChild(addButton);
-        bar.dataset.quickChipsSignature = signature;
     }
 
-    window.addEventListener('jarvis-chips-updated', () => injectQuickActionChips());
+    let _chipsDebounceTimer = null;
+    function scheduleInjectQuickActionChips() {
+        if (_chipsDebounceTimer) return;
+        _chipsDebounceTimer = setTimeout(() => {
+            _chipsDebounceTimer = null;
+            injectQuickActionChips();
+        }, 300);
+    }
+
+    window.addEventListener('jarvis-chips-updated', () => scheduleInjectQuickActionChips());
 
     window.__jarvisSessionTurnMap = new WeakMap();
 
@@ -704,7 +719,6 @@
                 attachChatPillDecorations(el.__monacoEditor);
             }
         }
-        injectQuickActionChips();
     }
 
     let _editor = window.__chatInputEditor;
@@ -1115,51 +1129,89 @@
         return state.maxTurns;
     }
 
+    let _isUpdatingHud = false;
     function injectOrUpdateChatHud() {
-        if (typeof document === 'undefined') return;
+        if (_isUpdatingHud || typeof document === 'undefined') return;
+        _isUpdatingHud = true;
+        try {
+            const sessions = Array.from(document.querySelectorAll('.interactive-session'));
+            const inputParts = Array.from(document.querySelectorAll('.interactive-input-part'));
+            if (sessions.length === 0 || inputParts.length === 0) return;
 
-        const sessions = Array.from(document.querySelectorAll('.interactive-session'));
-        const inputParts = Array.from(document.querySelectorAll('.interactive-input-part'));
-        if (sessions.length === 0 || inputParts.length === 0) return;
+            const inputPart = inputParts.find((part) => part.closest('.interactive-session')) || inputParts[inputParts.length - 1];
+            const sessionEl = inputPart.closest('.interactive-session') || sessions[sessions.length - 1];
+            const footerAnchor = inputPart.querySelector('.chat-input-picker-item, .chat-session-target-picker-item');
+            const footer = (footerAnchor && footerAnchor.parentElement) || inputPart;
+            if (!footer) return;
 
-        const inputPart = inputParts.find((part) => part.closest('.interactive-session')) || inputParts[inputParts.length - 1];
-        const sessionEl = inputPart.closest('.interactive-session') || sessions[sessions.length - 1];
-        const footerAnchor = inputPart.querySelector('.chat-input-picker-item, .chat-session-target-picker-item');
-        const footer = (footerAnchor && footerAnchor.parentElement) || inputPart;
-        if (!footer) return;
+            let badge = document.getElementById('jarvis-chat-hud-badge');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.className = 'jarvis-chat-hud-badge';
+                badge.id = 'jarvis-chat-hud-badge';
+                badge.title = 'Lượt trò chuyện trong phiên hiện tại (Click để mở New Local Chat khi Context đầy)';
+                badge.setAttribute('role', 'button');
+                badge.setAttribute('tabindex', '0');
 
-        let badge = document.getElementById('jarvis-chat-hud-badge');
-        if (!badge) {
-            badge = document.createElement('div');
-            badge.className = 'jarvis-chat-hud-badge';
-            badge.id = 'jarvis-chat-hud-badge';
-            badge.title = 'Lượt trò chuyện trong phiên hiện tại (Click để mở New Local Chat khi Context đầy)';
-            badge.setAttribute('role', 'button');
-            badge.setAttribute('tabindex', '0');
+                const dot = document.createElement('span');
+                dot.className = 'hud-indicator-dot';
+                const turnsLabel = document.createElement('span');
+                turnsLabel.className = 'hud-turns';
+                const weightLabel = document.createElement('span');
+                weightLabel.className = 'hud-weight';
+                badge.append(dot, turnsLabel, weightLabel);
 
-            const dot = document.createElement('span');
-            dot.className = 'hud-indicator-dot';
-            const turnsLabel = document.createElement('span');
-            turnsLabel.className = 'hud-turns';
-            const weightLabel = document.createElement('span');
-            weightLabel.className = 'hud-weight';
-            badge.append(dot, turnsLabel, weightLabel);
+                badge.addEventListener('click', () => {
+                    if (Number.parseInt(badge.dataset.turns, 10) >= 20) handleNewLocalChatClick();
+                });
+            }
 
-            badge.addEventListener('click', () => {
-                if (Number.parseInt(badge.dataset.turns, 10) >= 20) handleNewLocalChatClick();
-            });
+            if (badge.parentElement !== footer) {
+                footer.appendChild(badge);
+            }
+
+            const turns = countSessionTurns(sessionEl);
+            const turnsStr = String(turns);
+            if (badge.dataset.turns === turnsStr && badge.parentElement === footer) return;
+
+            const weight = calculateContextWeight(turns);
+            badge.dataset.turns = turnsStr;
+            badge.setAttribute('aria-label', `${turns}/20, ${weight.label}`);
+
+            const dotEl = badge.querySelector('.hud-indicator-dot');
+            if (dotEl && dotEl.textContent !== weight.dot) {
+                dotEl.textContent = weight.dot;
+                dotEl.style.color = weight.color;
+            }
+            const turnsEl = badge.querySelector('.hud-turns');
+            if (turnsEl && turnsEl.textContent !== `${turns}/20`) {
+                turnsEl.textContent = `${turns}/20`;
+            }
+            const weightEl = badge.querySelector('.hud-weight');
+            if (weightEl && weightEl.textContent !== weight.label) {
+                weightEl.textContent = weight.label;
+            }
+        } catch (_) {} finally {
+            _isUpdatingHud = false;
         }
+    }
 
-        if (badge.parentElement !== footer) footer.appendChild(badge);
+    let _hudDebounceTimer = null;
+    function scheduleUpdateChatHud() {
+        if (_hudDebounceTimer) return;
+        _hudDebounceTimer = setTimeout(() => {
+            _hudDebounceTimer = null;
+            injectOrUpdateChatHud();
+        }, 400);
+    }
 
-        const turns = countSessionTurns(sessionEl);
-        const weight = calculateContextWeight(turns);
-        badge.dataset.turns = String(turns);
-        badge.setAttribute('aria-label', `${turns}/20, ${weight.label}`);
-        badge.querySelector('.hud-indicator-dot').textContent = weight.dot;
-        badge.querySelector('.hud-indicator-dot').style.color = weight.color;
-        badge.querySelector('.hud-turns').textContent = `${turns}/20`;
-        badge.querySelector('.hud-weight').textContent = weight.label;
+    let _newChatBtnTimer = null;
+    function scheduleInjectNewLocalChatButton() {
+        if (_newChatBtnTimer) return;
+        _newChatBtnTimer = setTimeout(() => {
+            _newChatBtnTimer = null;
+            injectNewLocalChatButton();
+        }, 400);
     }
 
     /**
@@ -1272,16 +1324,32 @@
             if (scanAndDecorateHistory._isDecorating) return;
             let shouldScan = false;
             for (let i = 0; i < mutations.length; i++) {
-                if (mutations[i].addedNodes && mutations[i].addedNodes.length > 0) {
+                const added = mutations[i].addedNodes;
+                if (!added || added.length === 0) continue;
+                for (let j = 0; j < added.length; j++) {
+                    const node = added[j];
+                    // Bỏ qua các mutation phát sinh từ chính các element của JARVIS để tránh vòng lặp vô tận
+                    if (node.nodeType === 1 && node.closest && node.closest(
+                        '.jarvis-chat-hud-badge, .jarvis-quick-chips-bar, .jarvis-new-local-chat-action, .custom-wf-pill, .custom-mcp-pill, .custom-backtick-pill, .jarvis-macro-popup'
+                    )) {
+                        continue;
+                    }
+                    if (node.parentElement && node.parentElement.closest && node.parentElement.closest(
+                        '.jarvis-chat-hud-badge, .jarvis-quick-chips-bar, .jarvis-new-local-chat-action, .custom-wf-pill, .custom-mcp-pill, .custom-backtick-pill, .jarvis-macro-popup'
+                    )) {
+                        continue;
+                    }
                     shouldScan = true;
                     break;
                 }
+                if (shouldScan) break;
             }
             if (shouldScan) {
                 scheduleScanAndDecorateHistory();
                 scheduleEvaluateEmptyCodeBlocks();
-                injectNewLocalChatButton();
-                injectOrUpdateChatHud();
+                scheduleInjectNewLocalChatButton();
+                scheduleUpdateChatHud();
+                scheduleInjectQuickActionChips();
             }
         });
 
@@ -1292,9 +1360,9 @@
                 scheduleScanAndDecorateHistory();
                 scheduleEvaluateEmptyCodeBlocks();
                 findAndAttachChatEditor();
-                injectQuickActionChips();
-                injectNewLocalChatButton();
-                injectOrUpdateChatHud();
+                scheduleInjectQuickActionChips();
+                scheduleInjectNewLocalChatButton();
+                scheduleUpdateChatHud();
             }
         };
 
@@ -1302,16 +1370,16 @@
             document.addEventListener('DOMContentLoaded', () => {
                 startObserver();
                 findAndAttachChatEditor();
-                injectQuickActionChips();
-                injectNewLocalChatButton();
-                injectOrUpdateChatHud();
+                scheduleInjectQuickActionChips();
+                scheduleInjectNewLocalChatButton();
+                scheduleUpdateChatHud();
             });
         } else {
             startObserver();
             findAndAttachChatEditor();
-            injectQuickActionChips();
-            injectNewLocalChatButton();
-            injectOrUpdateChatHud();
+            scheduleInjectQuickActionChips();
+            scheduleInjectNewLocalChatButton();
+            scheduleUpdateChatHud();
         }
     }
 
@@ -1320,10 +1388,10 @@
             scheduleEvaluateEmptyCodeBlocks();
         }, 2000);
         setInterval(() => {
-            injectNewLocalChatButton();
-            injectOrUpdateChatHud();
-            injectQuickActionChips();
-        }, 1000);
+            scheduleInjectNewLocalChatButton();
+            scheduleUpdateChatHud();
+            scheduleInjectQuickActionChips();
+        }, 2500);
     }
 
     /**
