@@ -1,12 +1,12 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
-test('Macro regex trích xuất đúng token và param từ instructions rule', () => {
-    const regex = /^\s*-\s*`([a-z0-9_-]+)(?:\s+(<[^>]+>))?:\s*([^\r\n]+)/gm;
+test('Macro regex trích xuất đúng token và param từ instructions rule (hỗ trợ cả có và không có backtick đóng)', () => {
+    const regex = /^\s*-\s*`([a-z0-9_-]+)`?(?:\s+(<[^>]+>))?:\s*([^\r\n]+)/gm;
     const sample = `
     - \`wtn <name>: Tạo worktree độc lập từ develop hoặc main
     - \`mtdb <target>: Dùng MCP oracle-mes-test kiểm thử target
-    - \`ver <version>: update new version
+    - \`ver\` <version>: update new version
     - \`tt: tiếp tục thực hiện request
     `;
 

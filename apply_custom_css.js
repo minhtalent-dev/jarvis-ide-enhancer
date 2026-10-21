@@ -57,7 +57,7 @@ function loadOrScanMacros() {
         findInstructionFiles(d);
     }
 
-    const regex = /^\s*-\s*`([a-z0-9_-]+)(?:\s+(<[^>]+>))?:\s*([^\r\n]+)/gm;
+    const regex = /^\s*-\s*`([a-z0-9_-]+)`?(?:\s+(<[^>]+>))?:\s*([^\r\n]+)/gm;
     for (const filePath of candidateFiles) {
         try {
             const content = fs.readFileSync(filePath, 'utf8');
@@ -68,7 +68,10 @@ function loadOrScanMacros() {
                 const param = match[2] ? match[2].trim() : null;
                 let desc = (match[3] || '').trim().replace(/:+$/, '').trim();
                 if (desc.length > 65) desc = desc.slice(0, 65).trim().replace(/:+$/, '').trim();
-                if (!macroMap.has(token)) {
+                if (macroMap.has(token)) {
+                    const existing = macroMap.get(token);
+                    macroMap.set(token, { ...existing, token, desc, param: param || existing.param });
+                } else {
                     macroMap.set(token, { token, desc, param });
                 }
             }

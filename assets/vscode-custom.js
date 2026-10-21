@@ -67,8 +67,10 @@
         try {
             const editor = window.__chatInputEditor;
             const editorDom = editor && ((editor.getDomNode && editor.getDomNode()) || (editor.getContainerDomNode && editor.getContainerDomNode()));
+            const visibleContainers = Array.from(document.querySelectorAll('.interactive-input-part, .chat-input-widget, .chat-input-container'))
+                .filter(c => !c.closest('.hidden, [style*="display: none"], [style*="visibility: hidden"]'));
             const container = (editorDom && editorDom.closest && editorDom.closest('.interactive-input-part, .chat-input-widget, .chat-input-container')) ||
-                document.querySelector('.interactive-input-part, .chat-input-widget, .chat-input-container');
+                visibleContainers[visibleContainers.length - 1];
             if (!container) return;
 
             const chips = getQuickChips();
@@ -79,9 +81,11 @@
                 bar = document.createElement('div');
                 bar.className = 'jarvis-quick-chips-bar';
                 bar.id = 'jarvis-quick-chips-bar';
-                const editorNode = container.querySelector('.chat-input-editor, .interactive-input-editor');
-                container.insertBefore(bar, editorNode || container.firstChild);
+                container.insertBefore(bar, container.firstChild);
             } else {
+                if (bar.parentElement !== container) {
+                    container.insertBefore(bar, container.firstChild);
+                }
                 while (bar.firstChild) bar.removeChild(bar.firstChild);
             }
 
@@ -191,9 +195,10 @@
         { token: '`fp', desc: 'Reindex LSP, ma trận 4 tầng, plan 100% không điểm mù' },
         { token: '`tt', desc: 'Tiếp tục thực hiện implementation plan' },
         { token: '`rcm', desc: 'Gợi ý 3 option fix/execute/debug' },
-        { token: '`wtn', desc: 'Tạo worktree mới độc lập từ develop/main' },
-        { token: '`wtm', desc: 'Merge worktree vào develop/main & sync DB' },
-        { token: '`ver', desc: 'Cập nhật new version cho hệ thống/tài liệu' },
+        { token: '`wtn', param: '<name>', desc: 'Tạo worktree mới độc lập từ develop/main' },
+        { token: '`wtm', param: '<name>', desc: 'Merge worktree vào develop/main & sync DB' },
+        { token: '`ver', param: '<version>', desc: 'Cập nhật new version cho hệ thống/tài liệu' },
+        { token: '`mtdb', param: '<target>', desc: 'Kiểm thử Oracle DB mes_test (describe, test cases, cleanup)' },
         { token: '`rf', desc: 'Reindex function' },
         { token: '`rp', desc: 'Reindex project' },
         { token: '`rp1', desc: 'Kiểm tra plan/phase đúng đủ chuẩn 100%' },
@@ -364,7 +369,7 @@
             tokenSpan.className = m.token.startsWith('/mcp:')
                 ? 'jarvis-mcp-token'
                 : (m.token.startsWith('/') ? 'jarvis-slash-token' : 'jarvis-macro-token');
-            tokenSpan.textContent = m.token;
+            tokenSpan.textContent = m.param ? `${m.token} ${m.param}` : m.token;
 
             const descSpan = document.createElement('span');
             descSpan.className = 'jarvis-macro-desc';
@@ -1114,18 +1119,28 @@
     function countSessionTurns(sessionEl) {
         if (!sessionEl || typeof sessionEl.querySelectorAll !== 'function') return 0;
 
-        const state = window.__jarvisSessionTurnMap.get(sessionEl) || { maxTurns: 0 };
-        const requestNodes = sessionEl.querySelectorAll(
-            '.interactive-request, .chat-item.request, .monaco-list-row.request, [data-index].request, .chat-row.request, .chat-request'
-        );
-        let highestIndex = -1;
-        for (const requestNode of requestNodes) {
-            const dataIndex = Number.parseInt(requestNode.getAttribute('data-index'), 10);
-            if (Number.isFinite(dataIndex)) highestIndex = Math.max(highestIndex, dataIndex);
+        let state = window.__jarvisSessionTurnMap.get(sessionEl);
+        if (!state) {
+            state = { seenIndices: new Set(), maxTurns: 0 };
+            window.__jarvisSessionTurnMap.set(sessionEl, state);
         }
 
-        state.maxTurns = Math.max(state.maxTurns, requestNodes.length, highestIndex + 1);
-        window.__jarvisSessionTurnMap.set(sessionEl, state);
+        // 1. Quét các phần tử request của User (loại bỏ hoàn toàn phản hồi của Agent/Assistant)
+        const allUserNodes = Array.from(sessionEl.querySelectorAll(
+            '.monaco-list-row.request, .chat-item.request, .interactive-request, [class*="chat-request"]'
+        )).filter((node) => !node.closest('.interactive-response, .chat-response, .chat-item.response, [class~="response"]'));
+
+        // 2. Lọc bỏ các node con lồng nhau để mỗi user request chỉ tính là 1 lượt duy nhất
+        const topLevelRequests = allUserNodes.filter((node) => !allUserNodes.some((other) => other !== node && other.contains(node)));
+
+        // 3. Thu thập định danh data-index hoặc index duy nhất của từng user request
+        for (const req of topLevelRequests) {
+            const dataIndex = req.getAttribute('data-index');
+            const key = dataIndex != null ? String(dataIndex) : (req.id || req.textContent?.slice(0, 30));
+            if (key) state.seenIndices.add(key);
+        }
+
+        state.maxTurns = Math.max(state.maxTurns, state.seenIndices.size, topLevelRequests.length);
         return state.maxTurns;
     }
 

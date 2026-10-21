@@ -160,7 +160,7 @@ function discoverMacrosFromRules(targetFile = null) {
         }
     }
 
-    const regex = /^\s*-\s*`([a-z0-9_-]+)(?:\s+(<[^>]+>))?:\s*([^\r\n]+)/gm;
+    const regex = /^\s*-\s*`([a-z0-9_-]+)`?(?:\s+(<[^>]+>))?:\s*([^\r\n]+)/gm;
 
     for (const filePath of candidateFiles) {
         try {
@@ -179,7 +179,10 @@ function discoverMacrosFromRules(targetFile = null) {
                 }
                 desc = desc.replace(/:+$/, '').trim();
 
-                if (!macroMap.has(token)) {
+                if (macroMap.has(token)) {
+                    const existing = macroMap.get(token);
+                    macroMap.set(token, { ...existing, token, desc, param: param || existing.param });
+                } else {
                     macroMap.set(token, { token, desc, param });
                 }
             }
@@ -349,7 +352,10 @@ async function syncMacros(context, silent = false) {
             if (m && m.token) macroMap.set(m.token, m);
         }
         for (const m of userMacros) {
-            if (m && m.token) macroMap.set(m.token, m);
+            if (m && m.token) {
+                const existing = macroMap.get(m.token);
+                macroMap.set(m.token, { ...m, param: m.param || (existing && existing.param) });
+            }
         }
 
         const mergedMacros = Array.from(macroMap.values());
