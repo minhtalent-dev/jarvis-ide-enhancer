@@ -1172,9 +1172,7 @@
                 dot.className = 'hud-indicator-dot';
                 const turnsLabel = document.createElement('span');
                 turnsLabel.className = 'hud-turns';
-                const weightLabel = document.createElement('span');
-                weightLabel.className = 'hud-weight';
-                badge.append(dot, turnsLabel, weightLabel);
+                badge.append(dot, turnsLabel);
 
                 badge.addEventListener('click', () => {
                     if (Number.parseInt(badge.dataset.turns, 10) >= 20) handleNewLocalChatClick();
@@ -1191,6 +1189,7 @@
 
             const weight = calculateContextWeight(turns);
             badge.dataset.turns = turnsStr;
+            badge.title = `Lượt trò chuyện: ${turns}/20 (${weight.label}) - Bấm để mở New Local Chat khi đầy`;
             badge.setAttribute('aria-label', `${turns}/20, ${weight.label}`);
 
             const dotEl = badge.querySelector('.hud-indicator-dot');
@@ -1203,8 +1202,8 @@
                 turnsEl.textContent = `${turns}/20`;
             }
             const weightEl = badge.querySelector('.hud-weight');
-            if (weightEl && weightEl.textContent !== weight.label) {
-                weightEl.textContent = weight.label;
+            if (weightEl) {
+                weightEl.remove();
             }
         } catch (_) {} finally {
             _isUpdatingHud = false;

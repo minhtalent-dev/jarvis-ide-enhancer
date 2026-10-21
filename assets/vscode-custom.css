@@ -606,9 +606,9 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
 .jarvis-chat-hud-badge {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px !important;
-    margin-left: 8px !important;
-    padding: 3px 8px !important;
+    gap: 5px !important;
+    margin-left: 6px !important;
+    padding: 2px 7px !important;
     border: 1px solid rgba(137, 180, 250, 0.28) !important;
     border-radius: 12px !important;
     background: rgba(24, 24, 37, 0.68) !important;
@@ -643,46 +643,53 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     font-variant-numeric: tabular-nums !important;
 }
 
-.jarvis-chat-hud-badge .hud-weight {
-    color: var(--vscode-descriptionForeground, #a6adc8) !important;
-}
-
 .jarvis-quick-chips-bar {
     display: flex !important;
+    flex-wrap: wrap !important;
     align-items: center !important;
-    gap: 6px !important;
-    padding: 4px 8px !important;
-    overflow-x: auto !important;
-    scrollbar-width: none !important;
-    background: rgba(17, 17, 27, 0.45) !important;
+    gap: 4px 6px !important;
+    padding: 4px 6px !important;
+    max-height: 72px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin !important;
+    background: rgba(17, 17, 27, 0.5) !important;
     backdrop-filter: blur(8px) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
     box-sizing: border-box !important;
+    width: 100% !important;
 }
 
 .jarvis-quick-chips-bar::-webkit-scrollbar {
-    display: none !important;
+    width: 4px !important;
+}
+
+.jarvis-quick-chips-bar::-webkit-scrollbar-thumb {
+    background: rgba(137, 180, 250, 0.25) !important;
+    border-radius: 4px !important;
 }
 
 .jarvis-quick-chip {
     display: inline-flex !important;
     align-items: center !important;
-    padding: 3px 8px !important;
-    border-radius: 12px !important;
-    background: rgba(30, 30, 46, 0.7) !important;
+    padding: 2px 7px !important;
+    border-radius: 8px !important;
+    background: rgba(30, 30, 46, 0.75) !important;
     border: 1px solid rgba(137, 180, 250, 0.25) !important;
     color: #cdd6f4 !important;
-    font-size: 11px !important;
+    font-size: 10.5px !important;
+    line-height: 1.25 !important;
     font-weight: 500 !important;
     cursor: pointer !important;
     white-space: nowrap !important;
     user-select: none !important;
+    margin: 0 !important;
     transition: all 0.15s ease !important;
 }
 
 .jarvis-quick-chip:hover {
-    background: rgba(137, 180, 250, 0.2) !important;
-    border-color: rgba(137, 180, 250, 0.6) !important;
+    background: rgba(137, 180, 250, 0.22) !important;
+    border-color: rgba(137, 180, 250, 0.65) !important;
     color: #89b4fa !important;
     box-shadow: 0 0 8px rgba(137, 180, 250, 0.3) !important;
     transform: translateY(-1px) !important;
@@ -696,23 +703,24 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 20px !important;
-    height: 20px !important;
+    width: 18px !important;
+    height: 18px !important;
     border-radius: 50% !important;
-    background: rgba(30, 30, 46, 0.5) !important;
-    border: 1px dashed rgba(137, 180, 250, 0.4) !important;
+    background: rgba(30, 30, 46, 0.6) !important;
+    border: 1px dashed rgba(137, 180, 250, 0.45) !important;
     color: #89b4fa !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
     font-weight: 600 !important;
     cursor: pointer !important;
     transition: all 0.2s ease !important;
     flex-shrink: 0 !important;
+    margin: 0 !important;
 }
 
 .jarvis-quick-chip-add:hover {
-    background: rgba(137, 180, 250, 0.25) !important;
+    background: rgba(137, 180, 250, 0.3) !important;
     border-style: solid !important;
-    box-shadow: 0 0 8px rgba(137, 180, 250, 0.4) !important;
+    box-shadow: 0 0 8px rgba(137, 180, 250, 0.45) !important;
     transform: scale(1.1) !important;
 }
 
