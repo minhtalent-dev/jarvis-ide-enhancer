@@ -643,12 +643,21 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     font-variant-numeric: tabular-nums !important;
 }
 
+/* Triệt tiêu hoàn toàn hiệu ứng giật/co giãn chiều cao khi focus vào chat input */
+.monaco-workbench .interactive-session .interactive-input-part,
+.monaco-workbench .interactive-session .chat-input-container,
+.monaco-workbench .interactive-session .chat-editor-container,
+.monaco-workbench .interactive-session .interactive-input-and-side-toolbar {
+    transition: none !important;
+}
+
 .jarvis-quick-chips-bar {
     display: flex !important;
     flex-wrap: wrap !important;
     align-items: center !important;
     gap: 4px 6px !important;
     padding: 4px 6px !important;
+    min-height: 26px !important;
     max-height: 72px !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
@@ -658,6 +667,8 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
     box-sizing: border-box !important;
     width: 100% !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
 }
 
 .jarvis-quick-chips-bar::-webkit-scrollbar {

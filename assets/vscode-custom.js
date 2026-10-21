@@ -60,33 +60,41 @@
         ed.focus();
     }
 
+    function getTargetChatContainer() {
+        const editor = window.__chatInputEditor;
+        const editorDom = editor && ((editor.getDomNode && editor.getDomNode()) || (editor.getContainerDomNode && editor.getContainerDomNode()));
+        if (editorDom && editorDom.closest) {
+            const innerContainer = editorDom.closest('.chat-input-container');
+            if (innerContainer) return innerContainer;
+        }
+        const activeContainer = document.querySelector('.interactive-session:not(.hidden) .chat-input-container, .interactive-input-part:not(.hidden) .chat-input-container');
+        if (activeContainer) return activeContainer;
+        return document.querySelector('.chat-input-container') || document.querySelector('.interactive-input-part');
+    }
+
     let _isInjectingChips = false;
     function injectQuickActionChips() {
         if (_isInjectingChips || typeof document === 'undefined') return;
         _isInjectingChips = true;
         try {
-            const editor = window.__chatInputEditor;
-            const editorDom = editor && ((editor.getDomNode && editor.getDomNode()) || (editor.getContainerDomNode && editor.getContainerDomNode()));
-            const visibleContainers = Array.from(document.querySelectorAll('.interactive-input-part, .chat-input-widget, .chat-input-container'))
-                .filter(c => !c.closest('.hidden, [style*="display: none"], [style*="visibility: hidden"]'));
-            const container = (editorDom && editorDom.closest && editorDom.closest('.interactive-input-part, .chat-input-widget, .chat-input-container')) ||
-                visibleContainers[visibleContainers.length - 1];
+            const container = getTargetChatContainer();
             if (!container) return;
 
             const chips = getQuickChips();
             const signature = JSON.stringify(chips);
             let bar = document.getElementById('jarvis-quick-chips-bar');
-            if (bar && bar.dataset.quickChipsSignature === signature && bar.parentElement === container) return;
-            if (!bar) {
+            if (bar) {
+                if (bar.parentElement !== container) {
+                    container.insertBefore(bar, container.firstChild);
+                }
+                // Nếu nội dung chips không đổi và bar đã ở trong container, KHÔNG XÓA CON để tránh giật chiều cao
+                if (bar.dataset.quickChipsSignature === signature) return;
+                while (bar.firstChild) bar.removeChild(bar.firstChild);
+            } else {
                 bar = document.createElement('div');
                 bar.className = 'jarvis-quick-chips-bar';
                 bar.id = 'jarvis-quick-chips-bar';
                 container.insertBefore(bar, container.firstChild);
-            } else {
-                if (bar.parentElement !== container) {
-                    container.insertBefore(bar, container.firstChild);
-                }
-                while (bar.firstChild) bar.removeChild(bar.firstChild);
             }
 
             for (const chip of chips) {
