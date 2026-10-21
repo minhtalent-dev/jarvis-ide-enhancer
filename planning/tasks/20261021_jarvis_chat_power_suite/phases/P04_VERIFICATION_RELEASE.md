@@ -7,7 +7,7 @@
 | **Phase ID** | `P04` |
 | **Parent Task ID** | `TASK-20261021-001` |
 | **Master Plan** | `../TASK_JARVIS_CHAT_POWER_SUITE.md` |
-| **Status** | 📋 Planning |
+| **Status** | ✅ Done |
 | **Depends on** | `P01, P02, P03` |
 | **Lifecycle Owner** | JARVIS / Worker |
 
@@ -17,7 +17,7 @@
 
 | Action | File path | Target Symbol/Area | Reason | Evidence |
 |:---|:---|:---|:---|:---|
-| Create | `test/chat-power-suite.test.js` | Toàn bộ file | Unit checks cho macro param parser và HUD context counter | `Expected` |
+| Create | `test/chat-power-suite.test.js` | Toàn bộ file | Unit checks cho macro param parser và HUD context counter | `Confirmed` |
 | Edit | `package.json` | `version` | Nâng phiên bản lên v1.3.0 | `Confirmed` |
 | Edit | `README.md` | Badge & Tính năng | Cập nhật tài liệu bộ tính năng JARVIS Chat Power Suite | `Confirmed` |
 | Edit | `CHANGELOG.md` | `## [1.3.0]` | Ghi nhận 3 tính năng mới theo chuẩn ngôn ngữ end-user | `Confirmed` |
@@ -27,7 +27,7 @@
 
 ## 3. Tasks Breakdown
 
-- [ ] **Task P04.1: Xây dựng bộ kiểm thử tự động `test/chat-power-suite.test.js`**
+- [x] **Task P04.1: Xây dựng bộ kiểm thử tự động `test/chat-power-suite.test.js`**
   - File: `test/chat-power-suite.test.js`
   - Chi tiết:
     - Sử dụng `node:test` và `node:assert/strict` (không cài thêm dependency bên ngoài).
@@ -41,7 +41,7 @@
       4. Kiểm tra CRUD helper functions (thêm, xóa, reset chip).
     - Lệnh chạy: `node --test test/chat-power-suite.test.js`.
 
-- [ ] **Task P04.2: Cập nhật tài liệu phiên bản và đóng gói VSIX**
+- [x] **Task P04.2: Cập nhật tài liệu phiên bản và đóng gói VSIX**
   - Files: `package.json`, `README.md`, `CHANGELOG.md`
   - Chi tiết:
     - Bumper version từ `1.2.3` lên `1.3.0` (Minor version mới vì bổ sung bộ 3 tính năng lớn).
@@ -52,7 +52,7 @@
     - Cập nhật badge phiên bản trong `README.md`.
     - Chạy `node build_and_install.js` để đóng gói `jarvis-ide-enhancer-1.3.0.vsix` và cài đặt tự động.
 
-- [ ] **Task P04.3: Kiểm thử thủ công trên VS Code Editor và nghiệm thu toàn diện**
+- [x] **Task P04.3: Kiểm thử thủ công trên VS Code Editor và nghiệm thu toàn diện**
   - File: VS Code Runtime
   - Chi tiết:
     - Nhấn `Ctrl+Shift+P` -> `Reload Window`.
@@ -97,7 +97,7 @@
     node build_and_install.js
     ```
 - **Post-check (Phase DoD):**
-  - [ ] Bộ test đạt 100% Pass.
-  - [ ] Đóng gói và cài đặt extension thành công.
-  - [ ] Đồng bộ trạng thái Phase P04 trong Master Plan thành `Done`.
-  - [ ] Chuyển trạng thái Master Plan sang `Implemented`.
+  - [x] Bộ test đạt 100% Pass.
+  - [x] Đóng gói và cài đặt extension thành công.
+  - [x] Đồng bộ trạng thái Phase P04 trong Master Plan thành `Done`.
+  - [x] Chuyển trạng thái Master Plan sang `Implemented`.

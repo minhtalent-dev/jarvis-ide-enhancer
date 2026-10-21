@@ -2,7 +2,7 @@
   "name": "jarvis-ide-enhancer",
   "displayName": "JARVIS IDE Enhancer",
   "description": "Enhance VS Code with JARVIS 3D cursor, chat styles, prompt slash intellisense, and UI automation.",
-  "version": "1.2.3",
+  "version": "1.3.0",
   "publisher": "minhtalent-dev",
   "author": "minh <baominh20398@gmail.com>",
   "license": "MIT",
@@ -75,6 +75,27 @@
             }
           }
         },
+        "jarvisEnhancer.quickChips": {
+          "type": "array",
+          "default": [
+            { "label": "⚡ Tiếp tục", "token": "`tt", "desc": "Tiếp tục thực thi implementation" },
+            { "label": "📋 Kế hoạch", "token": "`fp", "desc": "Reindex & lập Task Plan 100% không điểm mù" },
+            { "label": "💡 Gợi ý", "token": "`rcm", "desc": "Gợi ý 3 phương án thực thi/sửa lỗi" },
+            { "label": "🚀 Commit", "token": "`git", "desc": "Cập nhật changelog/readme và commit git" },
+            { "label": "🧪 Test DB", "token": "`mtdb", "param": "<target>", "desc": "Kiểm thử Oracle DB mes_test" },
+            { "label": "🧹 Clear", "token": "/clear", "desc": "Xóa phiên trò chuyện hiện tại" }
+          ],
+          "description": "Danh sách các nút Quick Action Chips hiển thị trên thanh công cụ chat.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "token": { "type": "string" },
+              "param": { "type": "string" },
+              "desc": { "type": "string" }
+            }
+          }
+        },
         "jarvisEnhancer.enableMacroAutoDiscovery": {
           "type": "boolean",
           "default": true,
@@ -107,6 +128,11 @@
       {
         "command": "jarvisEnhancer.discoverMacros",
         "title": "Discover Macros & Sync Settings",
+        "category": "JARVIS"
+      },
+      {
+        "command": "jarvisEnhancer.manageQuickChips",
+        "title": "Manage Quick Action Chips (Add/Remove/Reset)",
         "category": "JARVIS"
       },
       {

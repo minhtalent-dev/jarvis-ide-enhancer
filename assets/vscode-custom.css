@@ -603,6 +603,119 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     transform: scale(0.96) !important;
 }
 
+.jarvis-chat-hud-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-left: 8px !important;
+    padding: 3px 8px !important;
+    border: 1px solid rgba(137, 180, 250, 0.28) !important;
+    border-radius: 12px !important;
+    background: rgba(24, 24, 37, 0.68) !important;
+    backdrop-filter: blur(8px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(140%) !important;
+    color: var(--vscode-foreground, #cdd6f4) !important;
+    font-family: var(--vscode-editor-font-family, Consolas, 'Courier New', monospace) !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease !important;
+}
+
+.jarvis-chat-hud-badge:hover,
+.jarvis-chat-hud-badge:focus-visible {
+    border-color: rgba(137, 180, 250, 0.65) !important;
+    box-shadow: 0 0 10px rgba(137, 180, 250, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    outline: none !important;
+    transform: translateY(-1px) !important;
+}
+
+.jarvis-chat-hud-badge .hud-indicator-dot {
+    font-size: 10px !important;
+    line-height: 1 !important;
+    filter: drop-shadow(0 0 4px currentColor) !important;
+}
+
+.jarvis-chat-hud-badge .hud-turns {
+    font-weight: 700 !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+.jarvis-chat-hud-badge .hud-weight {
+    color: var(--vscode-descriptionForeground, #a6adc8) !important;
+}
+
+.jarvis-quick-chips-bar {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 4px 8px !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    background: rgba(17, 17, 27, 0.45) !important;
+    backdrop-filter: blur(8px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    box-sizing: border-box !important;
+}
+
+.jarvis-quick-chips-bar::-webkit-scrollbar {
+    display: none !important;
+}
+
+.jarvis-quick-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 3px 8px !important;
+    border-radius: 12px !important;
+    background: rgba(30, 30, 46, 0.7) !important;
+    border: 1px solid rgba(137, 180, 250, 0.25) !important;
+    color: #cdd6f4 !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    user-select: none !important;
+    transition: all 0.15s ease !important;
+}
+
+.jarvis-quick-chip:hover {
+    background: rgba(137, 180, 250, 0.2) !important;
+    border-color: rgba(137, 180, 250, 0.6) !important;
+    color: #89b4fa !important;
+    box-shadow: 0 0 8px rgba(137, 180, 250, 0.3) !important;
+    transform: translateY(-1px) !important;
+}
+
+.jarvis-quick-chip:active {
+    transform: translateY(0) !important;
+}
+
+.jarvis-quick-chip-add {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 50% !important;
+    background: rgba(30, 30, 46, 0.5) !important;
+    border: 1px dashed rgba(137, 180, 250, 0.4) !important;
+    color: #89b4fa !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    flex-shrink: 0 !important;
+}
+
+.jarvis-quick-chip-add:hover {
+    background: rgba(137, 180, 250, 0.25) !important;
+    border-style: solid !important;
+    box-shadow: 0 0 8px rgba(137, 180, 250, 0.4) !important;
+    transform: scale(1.1) !important;
+}
+
 
 
 

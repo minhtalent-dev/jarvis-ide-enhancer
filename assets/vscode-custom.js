@@ -5,6 +5,120 @@
 (function () {
     'use strict';
 
+    const JARVIS_DEFAULT_QUICK_CHIPS = [
+        { label: '⚡ Tiếp tục', token: '`tt', desc: 'Tiếp tục thực thi implementation' },
+        { label: '📋 Kế hoạch', token: '`fp', desc: 'Reindex & lập Task Plan 100% không điểm mù' },
+        { label: '💡 Gợi ý', token: '`rcm', desc: 'Gợi ý 3 phương án thực thi/sửa lỗi' },
+        { label: '🚀 Commit', token: '`git', desc: 'Cập nhật changelog/readme và commit git' },
+        { label: '🧪 Test DB', token: '`mtdb', param: '<target>', desc: 'Kiểm thử Oracle DB mes_test' },
+        { label: '🧹 Clear', token: '/clear', desc: 'Xóa phiên trò chuyện hiện tại' }
+    ];
+
+    function getQuickChips() {
+        return (window.__jarvisQuickChips && Array.isArray(window.__jarvisQuickChips) && window.__jarvisQuickChips.length > 0)
+            ? window.__jarvisQuickChips
+            : JARVIS_DEFAULT_QUICK_CHIPS;
+    }
+
+    function handleQuickChipClick(chip) {
+        if (!chip || !chip.token) return;
+        let ed = window.__chatInputEditor;
+        if (ed && typeof ed.focus === 'function') {
+            ed.focus();
+        } else {
+            findAndAttachChatEditor();
+            ed = window.__chatInputEditor;
+        }
+        if (!ed || typeof ed.getSelection !== 'function' || typeof ed.executeEdits !== 'function') return;
+
+        const selection = ed.getSelection();
+        if (!selection) return;
+        const range = {
+            startLineNumber: selection.startLineNumber,
+            startColumn: selection.startColumn,
+            endLineNumber: selection.endLineNumber,
+            endColumn: selection.endColumn
+        };
+        const hasParam = typeof chip.param === 'string' && chip.param.length > 0;
+        const insertText = hasParam ? `${chip.token} ${chip.param} ` : `${chip.token} `;
+        ed.executeEdits('jarvis-quick-chip', [{ range, text: insertText }]);
+
+        if (hasParam) {
+            const paramStartColumn = range.startColumn + chip.token.length + 1;
+            ed.setSelection({
+                startLineNumber: range.startLineNumber,
+                startColumn: paramStartColumn,
+                endLineNumber: range.startLineNumber,
+                endColumn: paramStartColumn + chip.param.length
+            });
+        } else {
+            ed.setPosition({
+                lineNumber: range.startLineNumber,
+                column: range.startColumn + insertText.length
+            });
+        }
+        ed.focus();
+    }
+
+    function injectQuickActionChips() {
+        if (typeof document === 'undefined') return;
+        const editor = window.__chatInputEditor;
+        const editorDom = editor && ((editor.getDomNode && editor.getDomNode()) || (editor.getContainerDomNode && editor.getContainerDomNode()));
+        const container = (editorDom && editorDom.closest && editorDom.closest('.interactive-input-part, .chat-input-widget, .chat-input-container')) ||
+            document.querySelector('.interactive-input-part, .chat-input-widget, .chat-input-container');
+        if (!container) return;
+
+        const chips = getQuickChips();
+        const signature = JSON.stringify(chips);
+        let bar = document.getElementById('jarvis-quick-chips-bar');
+        if (bar && bar.dataset.quickChipsSignature === signature) return;
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.className = 'jarvis-quick-chips-bar';
+            bar.id = 'jarvis-quick-chips-bar';
+            const editorNode = container.querySelector('.chat-input-editor, .interactive-input-editor');
+            container.insertBefore(bar, editorNode || container.firstChild);
+        } else {
+            while (bar.firstChild) bar.removeChild(bar.firstChild);
+        }
+
+        for (const chip of chips) {
+            if (!chip || !chip.label || !chip.token) continue;
+            const button = document.createElement('button');
+            button.className = 'jarvis-quick-chip';
+            button.type = 'button';
+            button.textContent = chip.label;
+            button.title = chip.desc || chip.token;
+            button.addEventListener('mousedown', (event) => event.preventDefault());
+            button.addEventListener('click', () => handleQuickChipClick(chip));
+            button.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+                if (window.__commandService) {
+                    window.__commandService.executeCommand('jarvisEnhancer.manageQuickChips');
+                }
+            });
+            bar.appendChild(button);
+        }
+
+        const addButton = document.createElement('button');
+        addButton.className = 'jarvis-quick-chip-add';
+        addButton.type = 'button';
+        addButton.title = 'Quản lý Quick Chips (Thêm/Xóa/Reset)';
+        addButton.textContent = '+';
+        addButton.addEventListener('mousedown', (event) => event.preventDefault());
+        addButton.addEventListener('click', () => {
+            if (window.__commandService) {
+                window.__commandService.executeCommand('jarvisEnhancer.manageQuickChips');
+            }
+        });
+        bar.appendChild(addButton);
+        bar.dataset.quickChipsSignature = signature;
+    }
+
+    window.addEventListener('jarvis-chips-updated', () => injectQuickActionChips());
+
+    window.__jarvisSessionTurnMap = new WeakMap();
+
     /**
      * Quét và trích xuất danh sách token backtick macro, loại trừ các khối inline code Markdown
      */
@@ -182,21 +296,26 @@
                     range.endColumn = range.endColumn + 1;
                 }
             }
-            const insertText = macro.token + ' ';
-            targetEditor.executeEdits('jarvis-macro', [{
-                range: range,
-                text: insertText
-            }]);
-            const nextCol = range.startColumn + insertText.length;
-            if (typeof targetEditor.setPosition === 'function') {
+            const hasParam = !!(macro && macro.param && typeof macro.param === 'string');
+            const insertText = hasParam ? `${macro.token} ${macro.param} ` : `${macro.token} `;
+            targetEditor.executeEdits('jarvis-macro', [{ range, text: insertText }]);
+            if (hasParam) {
+                const paramStartCol = range.startColumn + macro.token.length + 1;
+                const paramEndCol = paramStartCol + macro.param.length;
+                targetEditor.setSelection({
+                    startLineNumber: range.startLineNumber,
+                    startColumn: paramStartCol,
+                    endLineNumber: range.startLineNumber,
+                    endColumn: paramEndCol
+                });
+            } else {
+                const nextCol = range.startColumn + insertText.length;
                 targetEditor.setPosition({
                     lineNumber: range.startLineNumber,
                     column: nextCol
                 });
             }
-            if (typeof targetEditor.focus === 'function') {
-                targetEditor.focus();
-            }
+            targetEditor.focus();
         } catch (err) {
             console.error('[JARVIS] Error applying macro edit:', err);
         }
@@ -585,6 +704,7 @@
                 attachChatPillDecorations(el.__monacoEditor);
             }
         }
+        injectQuickActionChips();
     }
 
     let _editor = window.__chatInputEditor;
@@ -971,6 +1091,77 @@
         });
     }
 
+    function calculateContextWeight(turns) {
+        if (turns >= 20) return { label: 'Critical', color: '#f38ba8', dot: '🔴' };
+        if (turns >= 15) return { label: 'Medium', color: '#f9e2af', dot: '🟡' };
+        return { label: 'Light', color: '#a6e3a1', dot: '🟢' };
+    }
+
+    function countSessionTurns(sessionEl) {
+        if (!sessionEl || typeof sessionEl.querySelectorAll !== 'function') return 0;
+
+        const state = window.__jarvisSessionTurnMap.get(sessionEl) || { maxTurns: 0 };
+        const requestNodes = sessionEl.querySelectorAll(
+            '.interactive-request, .chat-item.request, .monaco-list-row.request, [data-index].request, .chat-row.request, .chat-request'
+        );
+        let highestIndex = -1;
+        for (const requestNode of requestNodes) {
+            const dataIndex = Number.parseInt(requestNode.getAttribute('data-index'), 10);
+            if (Number.isFinite(dataIndex)) highestIndex = Math.max(highestIndex, dataIndex);
+        }
+
+        state.maxTurns = Math.max(state.maxTurns, requestNodes.length, highestIndex + 1);
+        window.__jarvisSessionTurnMap.set(sessionEl, state);
+        return state.maxTurns;
+    }
+
+    function injectOrUpdateChatHud() {
+        if (typeof document === 'undefined') return;
+
+        const sessions = Array.from(document.querySelectorAll('.interactive-session'));
+        const inputParts = Array.from(document.querySelectorAll('.interactive-input-part'));
+        if (sessions.length === 0 || inputParts.length === 0) return;
+
+        const inputPart = inputParts.find((part) => part.closest('.interactive-session')) || inputParts[inputParts.length - 1];
+        const sessionEl = inputPart.closest('.interactive-session') || sessions[sessions.length - 1];
+        const footerAnchor = inputPart.querySelector('.chat-input-picker-item, .chat-session-target-picker-item');
+        const footer = (footerAnchor && footerAnchor.parentElement) || inputPart;
+        if (!footer) return;
+
+        let badge = document.getElementById('jarvis-chat-hud-badge');
+        if (!badge) {
+            badge = document.createElement('div');
+            badge.className = 'jarvis-chat-hud-badge';
+            badge.id = 'jarvis-chat-hud-badge';
+            badge.title = 'Lượt trò chuyện trong phiên hiện tại (Click để mở New Local Chat khi Context đầy)';
+            badge.setAttribute('role', 'button');
+            badge.setAttribute('tabindex', '0');
+
+            const dot = document.createElement('span');
+            dot.className = 'hud-indicator-dot';
+            const turnsLabel = document.createElement('span');
+            turnsLabel.className = 'hud-turns';
+            const weightLabel = document.createElement('span');
+            weightLabel.className = 'hud-weight';
+            badge.append(dot, turnsLabel, weightLabel);
+
+            badge.addEventListener('click', () => {
+                if (Number.parseInt(badge.dataset.turns, 10) >= 20) handleNewLocalChatClick();
+            });
+        }
+
+        if (badge.parentElement !== footer) footer.appendChild(badge);
+
+        const turns = countSessionTurns(sessionEl);
+        const weight = calculateContextWeight(turns);
+        badge.dataset.turns = String(turns);
+        badge.setAttribute('aria-label', `${turns}/20, ${weight.label}`);
+        badge.querySelector('.hud-indicator-dot').textContent = weight.dot;
+        badge.querySelector('.hud-indicator-dot').style.color = weight.color;
+        badge.querySelector('.hud-turns').textContent = `${turns}/20`;
+        badge.querySelector('.hud-weight').textContent = weight.label;
+    }
+
     /**
      * Xử lý click nút New Local Chat: mở New Chat ngay lập tức và đảm bảo Local + Allow all
      */
@@ -1090,6 +1281,7 @@
                 scheduleScanAndDecorateHistory();
                 scheduleEvaluateEmptyCodeBlocks();
                 injectNewLocalChatButton();
+                injectOrUpdateChatHud();
             }
         });
 
@@ -1100,7 +1292,9 @@
                 scheduleScanAndDecorateHistory();
                 scheduleEvaluateEmptyCodeBlocks();
                 findAndAttachChatEditor();
+                injectQuickActionChips();
                 injectNewLocalChatButton();
+                injectOrUpdateChatHud();
             }
         };
 
@@ -1108,12 +1302,16 @@
             document.addEventListener('DOMContentLoaded', () => {
                 startObserver();
                 findAndAttachChatEditor();
+                injectQuickActionChips();
                 injectNewLocalChatButton();
+                injectOrUpdateChatHud();
             });
         } else {
             startObserver();
             findAndAttachChatEditor();
+            injectQuickActionChips();
             injectNewLocalChatButton();
+            injectOrUpdateChatHud();
         }
     }
 
@@ -1123,6 +1321,8 @@
         }, 2000);
         setInterval(() => {
             injectNewLocalChatButton();
+            injectOrUpdateChatHud();
+            injectQuickActionChips();
         }, 1000);
     }
 

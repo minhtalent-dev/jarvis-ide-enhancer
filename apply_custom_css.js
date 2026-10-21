@@ -65,10 +65,11 @@ function loadOrScanMacros() {
             let match;
             while ((match = regex.exec(content)) !== null) {
                 const token = '`' + match[1];
+                const param = match[2] ? match[2].trim() : null;
                 let desc = (match[3] || '').trim().replace(/:+$/, '').trim();
                 if (desc.length > 65) desc = desc.slice(0, 65).trim().replace(/:+$/, '').trim();
                 if (!macroMap.has(token)) {
-                    macroMap.set(token, { token, desc });
+                    macroMap.set(token, { token, desc, param });
                 }
             }
         } catch (err) {}
@@ -237,13 +238,23 @@ if (fs.existsSync(srcCss)) {
 
 const macros = loadOrScanMacros();
 const slashCommands = loadOrScanSlashCommands();
+const DEFAULT_QUICK_CHIPS = [
+    { label: '⚡ Tiếp tục', token: '`tt', desc: 'Tiếp tục thực thi implementation' },
+    { label: '📋 Kế hoạch', token: '`fp', desc: 'Reindex & lập Task Plan 100% không điểm mù' },
+    { label: '💡 Gợi ý', token: '`rcm', desc: 'Gợi ý 3 phương án thực thi/sửa lỗi' },
+    { label: '🚀 Commit', token: '`git', desc: 'Cập nhật changelog/readme và commit git' },
+    { label: '🧪 Test DB', token: '`mtdb', param: '<target>', desc: 'Kiểm thử Oracle DB mes_test' },
+    { label: '🧹 Clear', token: '/clear', desc: 'Xóa phiên trò chuyện hiện tại' }
+];
 const macroHeader = `window.__jarvisDynamicMacros = ${JSON.stringify(macros)};\n` +
-    `window.__jarvisSlashCommands = ${JSON.stringify(slashCommands)};\n`;
+    `window.__jarvisSlashCommands = ${JSON.stringify(slashCommands)};\n` +
+    `window.__jarvisQuickChips = ${JSON.stringify(DEFAULT_QUICK_CHIPS)};\n`;
 
 if (fs.existsSync(srcJs)) {
     let baseJs = fs.readFileSync(srcJs, 'utf8');
     baseJs = baseJs.replace(/^window\.__jarvisDynamicMacros\s*=\s*[\s\S]*?;\r?\n/, '');
     baseJs = baseJs.replace(/^window\.__jarvisSlashCommands\s*=\s*[\s\S]*?;\r?\n/, '');
+    baseJs = baseJs.replace(/^window\.__jarvisQuickChips\s*=\s*[\s\S]*?;\r?\n/, '');
     const finalJs = macroHeader + baseJs;
     fs.writeFileSync(destJs, finalJs, 'utf8');
     console.log(`Đã ghi: ${srcJs} (kèm header ${macros.length} macros, ${slashCommands.length} slash commands) -> ${destJs}`);

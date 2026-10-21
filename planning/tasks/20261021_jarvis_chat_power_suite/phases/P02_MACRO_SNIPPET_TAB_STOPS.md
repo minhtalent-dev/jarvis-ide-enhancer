@@ -7,7 +7,7 @@
 | **Phase ID** | `P02` |
 | **Parent Task ID** | `TASK-20261021-001` |
 | **Master Plan** | `../TASK_JARVIS_CHAT_POWER_SUITE.md` |
-| **Status** | 📋 Planning |
+| **Status** | ✅ Done |
 | **Depends on** | `None` |
 | **Lifecycle Owner** | JARVIS / Worker |
 
@@ -25,7 +25,7 @@
 
 ## 3. Tasks Breakdown
 
-- [ ] **Task P02.1: Mở rộng parser `discoverMacrosFromRules()` để lưu trữ `param`**
+- [x] **Task P02.1: Mở rộng parser `discoverMacrosFromRules()` để lưu trữ `param`**
   - File: `extension.js`
   - Chi tiết:
     - Trong hàm `discoverMacrosFromRules()`, regex hiện tại là:
@@ -37,12 +37,12 @@
       `macroMap.set(token, { token, desc, param });`
     - Cập nhật hàm cache và setting `jarvisEnhancer.customMacros`.
 
-- [ ] **Task P02.2: Đồng bộ parser trong `apply_custom_css.js` và header `window.__jarvisDynamicMacros`**
+- [x] **Task P02.2: Đồng bộ parser trong `apply_custom_css.js` và header `window.__jarvisDynamicMacros`**
   - File: `apply_custom_css.js`
   - Chi tiết:
     - Cập nhật hàm `loadOrScanMacros()` tương tự như Task P02.1 để đảm bảo khi chạy script build CLI độc lập, file `vscode-custom-macros.json` và header `window.__jarvisDynamicMacros` được tiêm vào `vscode-custom.js` luôn chứa đầy đủ trường `param`.
 
-- [ ] **Task P02.3: Nâng cấp `applyMacroToEditor()` với cơ chế bôi đen tự động (Tab-Stop Selection)**
+- [x] **Task P02.3: Nâng cấp `applyMacroToEditor()` với cơ chế bôi đen tự động (Tab-Stop Selection)**
   - File: `assets/vscode-custom.js`
   - Chi tiết:
     - Trong hàm `applyMacroToEditor(macro)`:
@@ -129,6 +129,6 @@
   - Check ID: `T-001`, `T-004`
   - Lệnh kiểm tra: Chọn `` `wtn <name> `` hoặc `` `mtdb <target> `` trên Monaco Editor và xác nhận chuỗi `<...>` được bôi đen sẵn sàng gõ đè.
 - **Post-check (Phase DoD):**
-  - [ ] Hoàn thành cả 3 tasks P02.1, P02.2, P02.3.
-  - [ ] Tab-stop bôi đen chính xác placeholder, gõ phím thay thế tức thì.
-  - [ ] Đồng bộ trạng thái Phase P02 trong Master Plan thành `Done`.
+  - [x] Hoàn thành cả 3 tasks P02.1, P02.2, P02.3.
+  - [x] Tab-stop bôi đen chính xác placeholder, gõ phím thay thế tức thì.
+  - [x] Đồng bộ trạng thái Phase P02 trong Master Plan thành `Done`.

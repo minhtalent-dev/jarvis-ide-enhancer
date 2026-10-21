@@ -7,7 +7,7 @@
 | **Phase ID** | `P03` |
 | **Parent Task ID** | `TASK-20261021-001` |
 | **Master Plan** | `../TASK_JARVIS_CHAT_POWER_SUITE.md` |
-| **Status** | 📋 Planning |
+| **Status** | ✅ Done |
 | **Depends on** | `P02` |
 | **Lifecycle Owner** | JARVIS / Worker |
 
@@ -26,7 +26,7 @@
 
 ## 3. Tasks Breakdown
 
-- [ ] **Task P03.1: Xây dựng cấu trúc dữ liệu và danh sách Chip Action mặc định**
+- [x] **Task P03.1: Xây dựng cấu trúc dữ liệu và danh sách Chip Action mặc định**
   - File: `assets/vscode-custom.js`
   - Chi tiết:
     - Định nghĩa danh sách 6 Quick Action Chips phổ biến nhất cho workflow hàng ngày:
@@ -47,7 +47,7 @@
       * Nếu chip là macro thông thường: Chèn token vào vị trí con trỏ bằng `executeEdits`.
       * Nếu chip có `param`: Tự động áp dụng cơ chế Tab-Stop từ Phase P02 để bôi đen `<param>` (ví dụ `<target>` trong `` `mtdb <target> ``). Gõ phím là ghi đè ngay lập tức.
 
-- [ ] **Task P03.2: Thuật toán neo DOM thanh Quick Action Chips phía trên khung Chat Input**
+- [x] **Task P03.2: Thuật toán neo DOM thanh Quick Action Chips phía trên khung Chat Input**
   - File: `assets/vscode-custom.js`
   - Chi tiết:
     - Tìm anchor container: `.interactive-input-part` hoặc container chứa `.chat-input-editor`.
@@ -58,7 +58,7 @@
       `<button class="jarvis-quick-chip" title="${chip.desc}">${chip.label}</button>`
     - Tích hợp vào hàm `findAndAttachChatEditor()` và chu kỳ MutationObserver để đảm bảo thanh chips luôn xuất hiện khi mở chat hoặc chuyển tab.
 
-- [ ] **Task P03.3: Thiết kế CSS Cyberpunk Luxury cho thanh Quick Action Chips**
+- [x] **Task P03.3: Thiết kế CSS Cyberpunk Luxury cho thanh Quick Action Chips**
   - File: `assets/vscode-custom.css`
   - Chi tiết:
     ```css
@@ -125,7 +125,7 @@
     }
     ```
 
-- [ ] **Task P03.4: Xây dựng cơ chế Dynamic CRUD Quick Chips (Settings Sync & 1-Click UI)**
+- [x] **Task P03.4: Xây dựng cơ chế Dynamic CRUD Quick Chips (Settings Sync & 1-Click UI)**
   - Files: `extension.js`, `apply_custom_css.js`, `assets/vscode-custom.js`
   - Chi tiết:
     - **Tầng Cấu hình & Đồng bộ:**
@@ -181,6 +181,6 @@
     2. Bấm nút `+` mở QuickPick thêm chip mới và xác nhận chip mới xuất hiện ngay trên giao diện.
     3. Chuột phải vào chip vừa thêm để xóa và xác nhận chip biến mất ngay lập tức.
 - **Post-check (Phase DoD):**
-  - [ ] Hoàn thành cả 4 tasks P03.1, P03.2, P03.3, P03.4.
-  - [ ] Thanh chip hiển thị mượt mà, hỗ trợ CRUD 1 chạm đầy đủ, realtime re-render.
-  - [ ] Đồng bộ trạng thái Phase P03 trong Master Plan thành `Done`.
+  - [x] Hoàn thành cả 4 tasks P03.1, P03.2, P03.3, P03.4.
+  - [x] Thanh chip hiển thị mượt mà, hỗ trợ CRUD 1 chạm đầy đủ, realtime re-render.
+  - [x] Đồng bộ trạng thái Phase P03 trong Master Plan thành `Done`.

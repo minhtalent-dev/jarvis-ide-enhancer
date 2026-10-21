@@ -2,6 +2,14 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.3.0] - 2026-10-21
+
+### Added
+- **Live Chat HUD (Bộ đếm lượt đàm thoại thời gian thực):** Hiển thị trực quan số lượt trò chuyện và mức tải trọng ngữ cảnh ngay dưới chân khung chat; hỗ trợ tạo nhanh phiên làm việc mới khi ngữ cảnh đầy.
+- **Macro Snippet & Tab-Stop Expander (Tự động điền tham số):** Khi chọn các lệnh có tham số mẫu, phần gợi ý sẽ tự động được bôi đen để người dùng có thể gõ đè nội dung mong muốn ngay lập tức mà không cần xóa thủ công.
+- **Quick Action Chips Bar (Thanh nút thao tác nhanh):** Bổ sung hàng nút bấm tiện ích 1 chạm ngay phía trên khung soạn thảo trò chuyện, hỗ trợ gọi nhanh các quy trình thường dùng.
+- **Quản lý danh sách nút thao tác linh hoạt (Dynamic CRUD):** Cho phép người dùng dễ dàng tùy biến danh sách nút bấm thông qua cài đặt, thêm nút mới bằng nút cộng hoặc xóa nút bằng chuột phải trực tiếp trên giao diện.
+
 ## [1.2.3] - 2026-10-20
 
 ### Improved

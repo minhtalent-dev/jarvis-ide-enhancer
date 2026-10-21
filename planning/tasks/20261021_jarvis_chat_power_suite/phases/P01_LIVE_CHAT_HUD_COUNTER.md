@@ -7,7 +7,7 @@
 | **Phase ID** | `P01` |
 | **Parent Task ID** | `TASK-20261021-001` |
 | **Master Plan** | `../TASK_JARVIS_CHAT_POWER_SUITE.md` |
-| **Status** | 📋 Planning |
+| **Status** | ✅ Done |
 | **Depends on** | `None` |
 | **Lifecycle Owner** | JARVIS / Worker |
 
@@ -24,7 +24,7 @@
 
 ## 3. Tasks Breakdown
 
-- [ ] **Task P01.1: Xây dựng thuật toán đếm Turn chống ảo hóa (Virtualization-Resistant Counter)**
+- [x] **Task P01.1: Xây dựng thuật toán đếm Turn chống ảo hóa (Virtualization-Resistant Counter)**
   - File: `assets/vscode-custom.js`
   - Chi tiết:
     - Tạo đối tượng quản lý trạng thái phiên: `window.__jarvisSessionTurnMap = new WeakMap();` (gắn trực tiếp với DOM node `.interactive-session` tránh rò rỉ bộ nhớ khi đóng/mở chat).
@@ -53,7 +53,7 @@
       }
       ```
 
-- [ ] **Task P01.2: Neo và render HUD Badge tại chân khung Chat Input**
+- [x] **Task P01.2: Neo và render HUD Badge tại chân khung Chat Input**
   - File: `assets/vscode-custom.js`
   - Chi tiết:
     - Tìm anchor container: Vùng footer của input box cạnh các nút chọn Model / Target / Permission:
@@ -63,7 +63,7 @@
       * Thuộc tính `title`: "Lượt trò chuyện trong phiên hiện tại. Khi vượt ngưỡng 20, bấm để mở New Local Chat nhằm bảo vệ Context Window."
     - Đăng ký `MutationObserver` lắng nghe khi có request mới xuất hiện trong session, gọi `debouncedUpdateHud()`.
 
-- [ ] **Task P01.3: Tích hợp hành động click mở New Local Chat và CSS Styling**
+- [x] **Task P01.3: Tích hợp hành động click mở New Local Chat và CSS Styling**
   - Files: `assets/vscode-custom.js`, `assets/vscode-custom.css`
   - Chi tiết:
     - Khi người dùng click vào HUD Badge:
@@ -123,6 +123,6 @@
   - Check ID: `T-002`, `T-003`
   - Lệnh kiểm tra: Mở khung Chat và kiểm tra sự xuất hiện của badge `🟢 1/20 | Light`.
 - **Post-check (Phase DoD):**
-  - [ ] Hoàn thành cả 3 tasks P01.1, P01.2, P01.3.
-  - [ ] HUD badge hiển thị đúng màu và số turn thực tế.
-  - [ ] Đồng bộ trạng thái Phase P01 trong Master Plan thành `Done`.
+  - [x] Hoàn thành cả 3 tasks P01.1, P01.2, P01.3.
+  - [x] HUD badge hiển thị đúng màu và số turn thực tế.
+  - [x] Đồng bộ trạng thái Phase P01 trong Master Plan thành `Done`.

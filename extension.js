@@ -10,6 +10,18 @@ let logger;
 let isHealingRunning = false;
 let activeFsWatchers = [];
 let fsWatchDebounceTimer = null;
+const DEFAULT_QUICK_CHIPS = [
+    { label: '⚡ Tiếp tục', token: '`tt', desc: 'Tiếp tục thực thi implementation' },
+    { label: '📋 Kế hoạch', token: '`fp', desc: 'Reindex & lập Task Plan 100% không điểm mù' },
+    { label: '💡 Gợi ý', token: '`rcm', desc: 'Gợi ý 3 phương án thực thi/sửa lỗi' },
+    { label: '🚀 Commit', token: '`git', desc: 'Cập nhật changelog/readme và commit git' },
+    { label: '🧪 Test DB', token: '`mtdb', param: '<target>', desc: 'Kiểm thử Oracle DB mes_test' },
+    { label: '🧹 Clear', token: '/clear', desc: 'Xóa phiên trò chuyện hiện tại' }
+];
+
+function getQuickChipsConfig() {
+    return vscode.workspace.getConfiguration('jarvisEnhancer').get('quickChips') || DEFAULT_QUICK_CHIPS;
+}
 
 function getExternalPromptDirs() {
     const dirs = [];
@@ -159,6 +171,7 @@ function discoverMacrosFromRules(targetFile = null) {
             while ((match = regex.exec(content)) !== null) {
                 const rawToken = match[1];
                 const token = '`' + rawToken;
+                const param = match[2] ? match[2].trim() : null;
                 let desc = (match[3] || '').trim();
                 desc = desc.replace(/:+$/, '').trim();
                 if (desc.length > 65) {
@@ -167,7 +180,7 @@ function discoverMacrosFromRules(targetFile = null) {
                 desc = desc.replace(/:+$/, '').trim();
 
                 if (!macroMap.has(token)) {
-                    macroMap.set(token, { token, desc });
+                    macroMap.set(token, { token, desc, param });
                 }
             }
         } catch (err) {
@@ -329,6 +342,7 @@ async function syncMacros(context, silent = false) {
         const discovered = discoverMacrosFromRules();
         const config = vscode.workspace.getConfiguration();
         const userMacros = config.get('jarvisEnhancer.customMacros') || [];
+        const quickChips = getQuickChipsConfig();
 
         const macroMap = new Map();
         for (const m of discovered) {
@@ -363,9 +377,11 @@ async function syncMacros(context, silent = false) {
         }
         currentJs = currentJs.replace(/^window\.__jarvisDynamicMacros\s*=\s*[\s\S]*?;\r?\n/, '');
         currentJs = currentJs.replace(/^window\.__jarvisSlashCommands\s*=\s*[\s\S]*?;\r?\n/, '');
+        currentJs = currentJs.replace(/^window\.__jarvisQuickChips\s*=\s*[\s\S]*?;\r?\n/, '');
         const discoveredSlash = discoverSlashCommands();
         const updatedJs = `window.__jarvisDynamicMacros = ${JSON.stringify(mergedMacros)};\n` +
-            `window.__jarvisSlashCommands = ${JSON.stringify(discoveredSlash)};\n` + currentJs;
+            `window.__jarvisSlashCommands = ${JSON.stringify(discoveredSlash)};\n` +
+            `window.__jarvisQuickChips = ${JSON.stringify(quickChips)};\n` + currentJs;
         fs.writeFileSync(destJs, updatedJs, 'utf8');
         if (logger) logger.info(`Đã cập nhật dynamic macros & slash commands header vào: ${destJs}`);
 
@@ -524,9 +540,11 @@ async function syncSetup(context, silent = false) {
             dynamicMacros = config.get('jarvisEnhancer.customMacros') || [];
         }
         const dynamicSlashCommands = discoverSlashCommands();
+        const quickChips = getQuickChipsConfig();
 
         const macroHeader = `window.__jarvisDynamicMacros = ${JSON.stringify(dynamicMacros, null, 2)};\n` +
-            `window.__jarvisSlashCommands = ${JSON.stringify(dynamicSlashCommands, null, 2)};\n\n`;
+            `window.__jarvisSlashCommands = ${JSON.stringify(dynamicSlashCommands, null, 2)};\n` +
+            `window.__jarvisQuickChips = ${JSON.stringify(quickChips, null, 2)};\n\n`;
 
         const finalCss = baseCss + (userCss ? '\n\n/* === Custom User Overrides (Synced via Settings) === */\n' + userCss : '');
         const finalJs = macroHeader + baseJs + (userJs ? '\n\n/* === Custom User Overrides (Synced via Settings) === */\n' + userJs : '');
@@ -1203,6 +1221,84 @@ async function checkCloudVaultUpdates(context) {
     }
 }
 
+async function manageQuickChips(context) {
+    const config = vscode.workspace.getConfiguration();
+    const chips = [...getQuickChipsConfig()];
+    const action = await vscode.window.showQuickPick([
+        '➕ Thêm chip từ Macro/Lệnh có sẵn',
+        '✏️ Thêm chip tùy chỉnh (Custom Label & Token)',
+        '🗑️ Xóa một chip khỏi thanh bar',
+        '↺ Khôi phục danh sách mặc định'
+    ], { placeHolder: 'Quản lý Quick Action Chips' });
+    if (!action) return;
+
+    if (action === '➕ Thêm chip từ Macro/Lệnh có sẵn') {
+        const candidates = [
+            ...discoverMacrosFromRules(),
+            ...(config.get('jarvisEnhancer.customMacros') || []),
+            ...discoverSlashCommands()
+        ];
+        const byToken = new Map();
+        for (const candidate of candidates) {
+            if (candidate && candidate.token && !byToken.has(candidate.token)) {
+                byToken.set(candidate.token, candidate);
+            }
+        }
+        const selected = await vscode.window.showQuickPick(
+            Array.from(byToken.values()).map((item) => ({
+                label: item.token,
+                description: item.desc || '',
+                chip: item
+            })),
+            { placeHolder: 'Chọn macro hoặc slash command' }
+        );
+        if (!selected) return;
+
+        const label = await vscode.window.showInputBox({
+            prompt: 'Nhập nhãn hiển thị cho chip',
+            value: selected.label,
+            ignoreFocusOut: true
+        });
+        if (!label || !label.trim()) return;
+        chips.push({
+            label: label.trim(),
+            token: selected.chip.token,
+            ...(selected.chip.param ? { param: selected.chip.param } : {}),
+            desc: selected.chip.desc || selected.chip.token
+        });
+    } else if (action === '✏️ Thêm chip tùy chỉnh (Custom Label & Token)') {
+        const label = await vscode.window.showInputBox({
+            prompt: 'Nhập nhãn hiển thị cho chip',
+            ignoreFocusOut: true
+        });
+        if (!label || !label.trim()) return;
+        const token = await vscode.window.showInputBox({
+            prompt: 'Nhập token cần chèn',
+            ignoreFocusOut: true
+        });
+        if (!token || !token.trim()) return;
+        chips.push({ label: label.trim(), token: token.trim(), desc: token.trim() });
+    } else if (action === '🗑️ Xóa một chip khỏi thanh bar') {
+        const selected = await vscode.window.showQuickPick(
+            chips.map((chip, index) => ({
+                label: chip.label,
+                description: chip.token,
+                index
+            })),
+            { placeHolder: 'Chọn chip muốn xóa' }
+        );
+        if (!selected) return;
+        chips.splice(selected.index, 1);
+    } else if (action === '↺ Khôi phục danh sách mặc định') {
+        await config.update('jarvisEnhancer.quickChips', DEFAULT_QUICK_CHIPS, vscode.ConfigurationTarget.Global);
+        await syncMacros(context, true);
+        return;
+    }
+
+    await config.update('jarvisEnhancer.quickChips', chips, vscode.ConfigurationTarget.Global);
+    await syncMacros(context, true);
+}
+
 /**
  * Master Sync & Patch All (One-Click Restore)
  * Tự động đồng bộ Macros, Settings, tiêm Custom CSS/JS vào workbench.html, vá Core Bundle và xóa cache V8.
@@ -1265,6 +1361,9 @@ function activate(context) {
             if (e.affectsConfiguration('jarvisEnhancer.customCSS') || e.affectsConfiguration('jarvisEnhancer.customJS')) {
                 await syncSetup(context, true); // Chế độ silent
             }
+            if (e.affectsConfiguration('jarvisEnhancer.quickChips')) {
+                await syncMacros(context, true);
+            }
             if (e.affectsConfiguration('jarvisEnhancer.cloudVaultPayload')) {
                 checkCloudVaultUpdates(context);
             }
@@ -1283,6 +1382,7 @@ function activate(context) {
         }),
         vscode.commands.registerCommand('jarvisEnhancer.syncSetup', () => masterSyncAndPatchAll(context, false)),
         vscode.commands.registerCommand('jarvisEnhancer.discoverMacros', () => syncMacros(context, false)),
+        vscode.commands.registerCommand('jarvisEnhancer.manageQuickChips', () => manageQuickChips(context)),
         vscode.commands.registerCommand('jarvisEnhancer.patchIntellisense', () => masterSyncAndPatchAll(context, false)),
         vscode.commands.registerCommand('jarvisEnhancer.editCSS', () => openConfigFile(context, 'vscode-custom.css')),
         vscode.commands.registerCommand('jarvisEnhancer.editJS', () => openConfigFile(context, 'vscode-custom.js')),
