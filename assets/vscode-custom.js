@@ -1118,6 +1118,17 @@
         });
     }
 
+    function getActiveSessionKey(sessionEl) {
+        if (!sessionEl) return 'default';
+        const titleEl = document.querySelector('.chat-view-title-container, .pane-header .title, .composite.title');
+        const title = (titleEl?.textContent || '').trim().slice(0, 60);
+
+        const firstReq = sessionEl.querySelector('.monaco-list-row.interactive-request, .interactive-request');
+        const firstText = (firstReq?.textContent || '').trim().slice(0, 40);
+
+        return `${title}:::${firstText}`;
+    }
+
     function calculateContextWeight(turns) {
         if (turns >= 20) return { label: 'Critical', color: '#f38ba8', dot: '🔴' };
         if (turns >= 15) return { label: 'Medium', color: '#f9e2af', dot: '🟡' };
@@ -1127,51 +1138,41 @@
     function countSessionTurns(sessionEl) {
         if (!sessionEl || typeof sessionEl.querySelectorAll !== 'function') return 0;
 
-        let state = window.__jarvisSessionTurnMap.get(sessionEl);
-        if (!state) {
-            state = { seenIndices: new Set(), maxTurns: 0 };
-            window.__jarvisSessionTurnMap.set(sessionEl, state);
-        }
-
-        // 1. Kiểm tra số lượng prompt từ Microsoft Native Prompt Timeline (chứa toàn bộ lịch sử không bị ảo hóa)
-        const timelineItems = sessionEl.querySelectorAll(
-            '.prompt-timeline-gutter-row, .prompt-timeline-ruler-mark'
-        );
-        const timelineCount = timelineItems.length;
-
-        // 2. Trích xuất chỉ số hàng từ Monaco Tree Virtual List (aria-setsize và data-index)
-        let listMetricCount = 0;
-        const listRows = sessionEl.querySelectorAll('.monaco-list-row');
-        for (const row of listRows) {
-            const setSizeAttr = row.getAttribute('aria-setsize');
-            if (setSizeAttr) {
-                const totalItems = Number.parseInt(setSizeAttr, 10);
-                if (Number.isFinite(totalItems) && totalItems > 0) {
-                    listMetricCount = Math.max(listMetricCount, Math.ceil(totalItems / 2));
-                }
-            }
-            const dataIdx = Number.parseInt(row.getAttribute('data-index'), 10);
-            if (Number.isFinite(dataIdx) && dataIdx >= 0) {
-                listMetricCount = Math.max(listMetricCount, Math.floor(dataIdx / 2) + 1);
-            }
-        }
-
-        // 3. Quét các phần tử request của User trong DOM hiện tại (loại bỏ phản hồi của Agent)
+        // 1. Quét các phần tử request của User trong DOM hiện tại (loại bỏ hoàn toàn phản hồi của Agent/Assistant)
         const allUserNodes = Array.from(sessionEl.querySelectorAll(
-            '.monaco-list-row.request, .chat-item.request, .interactive-request, [class*="chat-request"]'
+            '.monaco-list-row.interactive-request, .chat-item.request, .interactive-request, [class*="chat-request"]'
         )).filter((node) => !node.closest('.interactive-response, .chat-response, .chat-item.response, [class~="response"]'));
 
         const topLevelRequests = allUserNodes.filter((node) => !allUserNodes.some((other) => other !== node && other.contains(node)));
 
+        // 2. Kiểm tra số lượng prompt từ Microsoft Native Prompt Timeline (chỉ đếm .prompt-timeline-gutter-row, không đếm ruler-mark để tránh nhân đôi)
+        const timelineGutterRows = sessionEl.querySelectorAll('.prompt-timeline-gutter-row');
+        const timelineCount = timelineGutterRows.length;
+
+        // 3. Nếu không có bất kỳ request nào trong DOM và timeline = 0 -> Đây là phiên chat mới/trống!
+        if (topLevelRequests.length === 0 && timelineCount === 0) {
+            return 0;
+        }
+
+        // 4. Lấy sessionKey độc lập cho phiên chat hiện tại (chống dính số lượt của phiên chat cũ)
+        const sessionKey = getActiveSessionKey(sessionEl);
+        if (!window.__jarvisSessionTurnMap) {
+            window.__jarvisSessionTurnMap = new Map();
+        }
+        let state = window.__jarvisSessionTurnMap.get(sessionKey);
+        if (!state) {
+            state = { seenIndices: new Set(), maxTurns: 0 };
+            window.__jarvisSessionTurnMap.set(sessionKey, state);
+        }
+
         for (const req of topLevelRequests) {
             const dataIndex = req.getAttribute('data-index');
-            const key = dataIndex != null ? String(dataIndex) : (req.id || req.textContent?.slice(0, 30));
+            const key = dataIndex != null ? `idx:${dataIndex}` : `txt:${req.textContent?.slice(0, 40)}`;
             if (key) state.seenIndices.add(key);
         }
 
         const detectedTurns = Math.max(
             timelineCount,
-            listMetricCount,
             state.seenIndices.size,
             topLevelRequests.length
         );

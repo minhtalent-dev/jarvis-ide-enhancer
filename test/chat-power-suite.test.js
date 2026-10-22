@@ -94,3 +94,43 @@ test('Tính toán tọa độ selection khi bôi đen tham số', () => {
     assert.equal(paramEndCol, 12);
     assert.equal(insertText.substring(paramStartCol - range.startColumn, paramEndCol - range.startColumn), '<name>');
 });
+
+test('Session turn counter cô lập theo sessionKey và trả về 0 cho phiên mới', () => {
+    const turnMap = new Map();
+
+    function mockCountSessionTurns(sessionKey, userRequests, timelineCount) {
+        if (userRequests.length === 0 && timelineCount === 0) {
+            return 0;
+        }
+        let state = turnMap.get(sessionKey);
+        if (!state) {
+            state = { seenIndices: new Set(), maxTurns: 0 };
+            turnMap.set(sessionKey, state);
+        }
+        for (const req of userRequests) {
+            state.seenIndices.add(req);
+        }
+        state.maxTurns = Math.max(state.maxTurns, timelineCount, state.seenIndices.size, userRequests.length);
+        return state.maxTurns;
+    }
+
+    // Phiên cũ: 13 turns
+    const oldKey = 'Local · session cu:::hoi cu';
+    const oldTurns = mockCountSessionTurns(oldKey, Array.from({ length: 13 }, (_, i) => `req-${i}`), 13);
+    assert.equal(oldTurns, 13);
+
+    // Phiên mới hoàn toàn trống: phải là 0, không bị dính 13 của phiên cũ
+    const emptyNewKey = 'New Chat:::';
+    const emptyTurns = mockCountSessionTurns(emptyNewKey, [], 0);
+    assert.equal(emptyTurns, 0);
+
+    // Phiên mới sau khi user gửi 3 câu: phải là 3
+    const newChatKey = 'Local · chao:::chao';
+    const turns1 = mockCountSessionTurns(newChatKey, ['req-chao-1'], 1);
+    assert.equal(turns1, 1);
+    const turns3 = mockCountSessionTurns(newChatKey, ['req-chao-1', 'req-chao-2', 'req-chao-3'], 3);
+    assert.equal(turns3, 3);
+
+    // Kiểm tra lại phiên cũ vẫn giữ nguyên 13 độc lập
+    assert.equal(turnMap.get(oldKey).maxTurns, 13);
+});
