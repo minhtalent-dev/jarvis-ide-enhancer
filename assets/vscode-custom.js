@@ -1133,22 +1133,50 @@
             window.__jarvisSessionTurnMap.set(sessionEl, state);
         }
 
-        // 1. Quét các phần tử request của User (loại bỏ hoàn toàn phản hồi của Agent/Assistant)
+        // 1. Kiểm tra số lượng prompt từ Microsoft Native Prompt Timeline (chứa toàn bộ lịch sử không bị ảo hóa)
+        const timelineItems = sessionEl.querySelectorAll(
+            '.prompt-timeline-gutter-row, .prompt-timeline-ruler-mark'
+        );
+        const timelineCount = timelineItems.length;
+
+        // 2. Trích xuất chỉ số hàng từ Monaco Tree Virtual List (aria-setsize và data-index)
+        let listMetricCount = 0;
+        const listRows = sessionEl.querySelectorAll('.monaco-list-row');
+        for (const row of listRows) {
+            const setSizeAttr = row.getAttribute('aria-setsize');
+            if (setSizeAttr) {
+                const totalItems = Number.parseInt(setSizeAttr, 10);
+                if (Number.isFinite(totalItems) && totalItems > 0) {
+                    listMetricCount = Math.max(listMetricCount, Math.ceil(totalItems / 2));
+                }
+            }
+            const dataIdx = Number.parseInt(row.getAttribute('data-index'), 10);
+            if (Number.isFinite(dataIdx) && dataIdx >= 0) {
+                listMetricCount = Math.max(listMetricCount, Math.floor(dataIdx / 2) + 1);
+            }
+        }
+
+        // 3. Quét các phần tử request của User trong DOM hiện tại (loại bỏ phản hồi của Agent)
         const allUserNodes = Array.from(sessionEl.querySelectorAll(
             '.monaco-list-row.request, .chat-item.request, .interactive-request, [class*="chat-request"]'
         )).filter((node) => !node.closest('.interactive-response, .chat-response, .chat-item.response, [class~="response"]'));
 
-        // 2. Lọc bỏ các node con lồng nhau để mỗi user request chỉ tính là 1 lượt duy nhất
         const topLevelRequests = allUserNodes.filter((node) => !allUserNodes.some((other) => other !== node && other.contains(node)));
 
-        // 3. Thu thập định danh data-index hoặc index duy nhất của từng user request
         for (const req of topLevelRequests) {
             const dataIndex = req.getAttribute('data-index');
             const key = dataIndex != null ? String(dataIndex) : (req.id || req.textContent?.slice(0, 30));
             if (key) state.seenIndices.add(key);
         }
 
-        state.maxTurns = Math.max(state.maxTurns, state.seenIndices.size, topLevelRequests.length);
+        const detectedTurns = Math.max(
+            timelineCount,
+            listMetricCount,
+            state.seenIndices.size,
+            topLevelRequests.length
+        );
+
+        state.maxTurns = Math.max(state.maxTurns, detectedTurns);
         return state.maxTurns;
     }
 
@@ -1167,19 +1195,29 @@
             const footer = (footerAnchor && footerAnchor.parentElement) || inputPart;
             if (!footer) return;
 
+            const turns = countSessionTurns(sessionEl);
+            const turnsStr = String(turns);
+            const weight = calculateContextWeight(turns);
+
             let badge = document.getElementById('jarvis-chat-hud-badge');
             if (!badge) {
                 badge = document.createElement('div');
                 badge.className = 'jarvis-chat-hud-badge';
                 badge.id = 'jarvis-chat-hud-badge';
-                badge.title = 'Lượt trò chuyện trong phiên hiện tại (Click để mở New Local Chat khi Context đầy)';
+                badge.title = `Lượt trò chuyện: ${turns}/20 (${weight.label}) - Bấm để mở New Local Chat khi đầy`;
                 badge.setAttribute('role', 'button');
                 badge.setAttribute('tabindex', '0');
+                badge.dataset.turns = turnsStr;
+                badge.setAttribute('aria-label', `${turns}/20, ${weight.label}`);
 
                 const dot = document.createElement('span');
                 dot.className = 'hud-indicator-dot';
+                dot.textContent = weight.dot;
+                dot.style.color = weight.color;
+
                 const turnsLabel = document.createElement('span');
                 turnsLabel.className = 'hud-turns';
+                turnsLabel.textContent = `${turns}/20`;
 
                 const sep = document.createElement('span');
                 sep.className = 'hud-separator';
@@ -1202,11 +1240,8 @@
                 footer.appendChild(badge);
             }
 
-            const turns = countSessionTurns(sessionEl);
-            const turnsStr = String(turns);
             if (badge.dataset.turns === turnsStr && badge.parentElement === footer) return;
 
-            const weight = calculateContextWeight(turns);
             badge.dataset.turns = turnsStr;
             badge.title = `Lượt trò chuyện: ${turns}/20 (${weight.label}) - Bấm để mở New Local Chat khi đầy`;
             badge.setAttribute('aria-label', `${turns}/20, ${weight.label}`);
@@ -1235,7 +1270,7 @@
         _hudDebounceTimer = setTimeout(() => {
             _hudDebounceTimer = null;
             injectOrUpdateChatHud();
-        }, 400);
+        }, 80);
     }
 
     let _newChatBtnTimer = null;

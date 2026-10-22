@@ -119,13 +119,30 @@
 */
 
 /* 5. Ép animation viền chat xoay liên tục - Bỏ qua Windows Animation Effects */
+@keyframes chat-input-working-border-spin {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+.monaco-workbench .interactive-session .chat-input-container.working > .chat-input-working-border {
+    opacity: 1 !important;
+}
+
+.monaco-workbench .interactive-session .chat-input-container.working > .chat-input-working-border:before {
+    animation: chat-input-working-border-spin var(--chat-input-anim-duration, 2.5s) linear infinite !important;
+}
+
 @property --chat-input-anim-angle {
     syntax: '<angle>';
     inherits: false;
     initial-value: 135deg;
 }
 
-@keyframes chat-input-working-border-spin {
+@keyframes chat-input-working-border-spin-legacy {
     from {
         --chat-input-anim-angle: 135deg;
     }
@@ -134,16 +151,16 @@
     }
 }
 
-.monaco-workbench .interactive-session .chat-input-container.working::before,
-.monaco-workbench .interactive-session .chat-input-container.working::after {
+.monaco-workbench .interactive-session .chat-input-container.working:not(:has(.chat-input-working-border))::before,
+.monaco-workbench .interactive-session .chat-input-container.working:not(:has(.chat-input-working-border))::after {
     opacity: 1 !important;
-    animation: chat-input-working-border-spin var(--chat-input-anim-duration, 2.5s) linear infinite !important;
+    animation: chat-input-working-border-spin-legacy var(--chat-input-anim-duration, 2.5s) linear infinite !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .monaco-workbench .interactive-session .chat-input-container.working,
-    .monaco-workbench .interactive-session .chat-input-container.working::before,
-    .monaco-workbench .interactive-session .chat-input-container.working::after {
+    .monaco-workbench .interactive-session .chat-input-container.working > .chat-input-working-border:before,
+    .monaco-workbench .interactive-session .chat-input-container.working:not(:has(.chat-input-working-border))::before,
+    .monaco-workbench .interactive-session .chat-input-container.working:not(:has(.chat-input-working-border))::after {
         animation: chat-input-working-border-spin var(--chat-input-anim-duration, 2.5s) linear infinite !important;
     }
 }
