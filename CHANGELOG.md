@@ -2,6 +2,19 @@
 
 All notable changes to the **JARVIS IDE Enhancer** extension will be documented in this file.
 
+## [1.4.0] - 2026-10-22
+
+### Added
+- **Phím Tab điều hướng thông minh (Tab-out Workflow Jump):** Khi gõ xong tham số lệnh, chỉ cần bấm phím `Tab` để con trỏ tự động nhảy qua ký hiệu ` > ` ra sau khoảng trắng; nếu phía sau là lệnh khác có tham số, phím `Tab` sẽ tự động bôi đen tham số kế tiếp để người dùng nhập liền mạch.
+- **Tự động nối chuỗi thao tác (Workflow Chaining Suffix):** Nhấp chọn các nút trên thanh thao tác nhanh sẽ tự động thêm hậu tố ` > `, giúp ghép nối các bước làm việc nhanh chóng mà không cần gõ thêm thủ công.
+- **Tự động nhận diện và đồng bộ tham số động (Dynamic Param Resolution):** Hệ thống tự động phát hiện và đồng bộ tham số mới cho các nút thao tác nhanh từ quy tắc vận hành mà không yêu cầu cấu hình lại.
+
+### Fixed & Improved
+- **Triệt tiêu hiện tượng rung giật thanh nhập liệu:** Tối ưu hóa cấu trúc thanh công cụ và neo phần tử cố định, loại bỏ triệt để hiện tượng nhấp nháy hoặc thay đổi chiều cao khung chat khi gõ phím.
+- **Bộ đếm phiên trò chuyện thời gian thực chuẩn xác:** Cô lập bộ đếm số lượt trò chuyện độc lập theo từng phiên, tự động đưa về 0 khi mở phiên mới và phản ánh trung thực toàn bộ lịch sử đàm thoại.
+- **Khôi phục hiệu ứng viền chuyển động:** Tinh chỉnh hiệu ứng viền xoay chuyển động báo hiệu trạng thái làm việc mượt mà và tương thích trên các bản cập nhật mới.
+- **Tối ưu vị trí huy hiệu đếm lượt:** Bố trí huy hiệu gọn gàng ngay cạnh thanh công cụ phụ, đảm bảo giao diện thoáng đãng và không che khuất nội dung nhập liệu.
+
 ## [1.3.0] - 2026-10-21
 
 ### Added

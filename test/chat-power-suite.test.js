@@ -2,12 +2,14 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
 test('Macro regex trích xuất đúng token và param từ instructions rule (hỗ trợ cả có và không có backtick đóng)', () => {
-    const regex = /^\s*-\s*`([a-z0-9_-]+)`?(?:\s+(<[^>]+>))?:\s*([^\r\n]+)/gm;
+    const regex = /^\s*-\s*`([a-z0-9_-]+)`?(?:\s+(<[^>]+>))?`?:\s*([^\r\n]+)/gm;
     const sample = `
     - \`wtn <name>: Tạo worktree độc lập từ develop hoặc main
     - \`mtdb <target>: Dùng MCP oracle-mes-test kiểm thử target
     - \`ver\` <version>: update new version
     - \`tt: tiếp tục thực hiện request
+    - \`git <hash>\`: cập nhật commit git
+    - \`rf <function>\`: reindex function
     `;
 
     const results = [];
@@ -20,7 +22,7 @@ test('Macro regex trích xuất đúng token và param từ instructions rule (h
         });
     }
 
-    assert.equal(results.length, 4);
+    assert.equal(results.length, 6);
     assert.deepEqual(results[0], {
         token: '`wtn',
         param: '<name>',
@@ -40,6 +42,16 @@ test('Macro regex trích xuất đúng token và param từ instructions rule (h
         token: '`tt',
         param: null,
         desc: 'tiếp tục thực hiện request'
+    });
+    assert.deepEqual(results[4], {
+        token: '`git',
+        param: '<hash>',
+        desc: 'cập nhật commit git'
+    });
+    assert.deepEqual(results[5], {
+        token: '`rf',
+        param: '<function>',
+        desc: 'reindex function'
     });
 });
 
@@ -63,7 +75,7 @@ test('Danh sách Quick Action Chips mặc định chứa đầy đủ 6 nút c�
         { label: '⚡ Tiếp tục', token: '`tt', desc: 'Tiếp tục thực thi implementation' },
         { label: '📋 Kế hoạch', token: '`fp', desc: 'Reindex & lập Task Plan 100% không điểm mù' },
         { label: '💡 Gợi ý', token: '`rcm', desc: 'Gợi ý 3 phương án thực thi/sửa lỗi' },
-        { label: '🚀 Commit', token: '`git', desc: 'Cập nhật changelog/readme và commit git' },
+        { label: '🚀 Commit', token: '`git', param: '<hash>', desc: 'Cập nhật changelog/readme và commit git' },
         { label: '🧪 Test DB', token: '`mtdb', param: '<target>', desc: 'Kiểm thử Oracle DB mes_test' },
         { label: '🧹 Clear', token: '/clear', desc: 'Xóa phiên trò chuyện hiện tại' }
     ];
@@ -79,6 +91,36 @@ test('Danh sách Quick Action Chips mặc định chứa đầy đủ 6 nút c�
 
     const dbChip = DEFAULT_QUICK_CHIPS.find(c => c.token === '`mtdb');
     assert.equal(dbChip.param, '<target>');
+
+    const gitChip = DEFAULT_QUICK_CHIPS.find(c => c.token === '`git');
+    assert.equal(gitChip.param, '<hash>');
+});
+
+test('Quick Action Chip tự động kế thừa param từ dynamic macros khi cấu hình chip cũ không có param', () => {
+    const dynamicMacros = [
+        { token: '`git', param: '<hash>', desc: 'commit git' },
+        { token: '`vrf', param: '<target>', desc: 'verify target' },
+        { token: '`tt', param: null, desc: 'continue' }
+    ];
+
+    function resolveChipParam(chip, macros) {
+        if (!chip) return null;
+        if (typeof chip.param === 'string' && chip.param.trim().length > 0) return chip.param.trim();
+        if (Array.isArray(macros)) {
+            const m = macros.find(item => item && item.token === chip.token);
+            if (m && typeof m.param === 'string' && m.param.trim().length > 0) return m.param.trim();
+        }
+        return null;
+    }
+
+    const staleGitChip = { label: 'git', token: '`git' };
+    assert.equal(resolveChipParam(staleGitChip, dynamicMacros), '<hash>');
+
+    const staleVrfChip = { label: 'vrf', token: '`vrf' };
+    assert.equal(resolveChipParam(staleVrfChip, dynamicMacros), '<target>');
+
+    const ttChip = { label: 'tt', token: '`tt' };
+    assert.equal(resolveChipParam(ttChip, dynamicMacros), null);
 });
 
 test('Tính toán tọa độ selection khi bôi đen tham số', () => {
@@ -149,4 +191,69 @@ test('Session turn counter cô lập theo sessionKey và trả về 0 cho phiên
 
     // Kiểm tra lại phiên cũ vẫn giữ nguyên 13 độc lập
     assert.equal(turnMap.get(oldKey).maxTurns, 13);
+});
+
+test('calculateTabJumpTarget tự động nhảy qua dấu > và bôi đen placeholder kế tiếp', () => {
+    function calculateTabJumpTarget(lineContent, cursorColumn) {
+        if (typeof lineContent !== 'string') return null;
+        const col = Math.max(1, Math.min(cursorColumn, lineContent.length + 1));
+        const textAfter = lineContent.slice(col - 1);
+
+        const match = /(?:^|\s*)>\s*/.exec(textAfter);
+        if (match) {
+            let targetCol = col + match.index + match[0].length;
+            let needsSpace = false;
+            if (!match[0].endsWith(' ') && (targetCol > lineContent.length || lineContent.charAt(targetCol - 1) !== ' ')) {
+                needsSpace = true;
+            }
+            const textAhead = lineContent.slice(targetCol - 1);
+            const placeholderMatch = /^(?:[^\s<]*\s+)?(<[a-zA-Z0-9_.:-]+>)/.exec(textAhead);
+            if (placeholderMatch) {
+                const pToken = placeholderMatch[1];
+                const pStart = targetCol + placeholderMatch[0].lastIndexOf(pToken);
+                const pEnd = pStart + pToken.length;
+                return { targetColumn: targetCol, selection: { startColumn: pStart, endColumn: pEnd }, needsSpace };
+            }
+            return { targetColumn: targetCol, selection: null, needsSpace };
+        }
+
+        const directPlaceholder = /<[a-zA-Z0-9_.:-]+>/.exec(textAfter);
+        if (directPlaceholder) {
+            const pStart = col + directPlaceholder.index;
+            const pEnd = pStart + directPlaceholder[0].length;
+            return { targetColumn: pEnd, selection: { startColumn: pStart, endColumn: pEnd }, needsSpace: false };
+        }
+
+        return null;
+    }
+
+    // Trường hợp 1: Đã nhập xong param `git zxczxc > `, cursor ở cột 13 (sau zxczxc)
+    const line1 = '`git zxczxc > ';
+    const res1 = calculateTabJumpTarget(line1, 13);
+    assert.ok(res1);
+    assert.equal(res1.targetColumn, 15);
+    assert.equal(res1.selection, null);
+    assert.equal(res1.needsSpace, false);
+
+    // Trường hợp 2: Dấu > ở cuối không có space `git zxczxc >`
+    const line2 = '`git zxczxc >';
+    const res2 = calculateTabJumpTarget(line2, 13);
+    assert.ok(res2);
+    assert.equal(res2.targetColumn, 14);
+    assert.equal(res2.needsSpace, true);
+
+    // Trường hợp 3: Chuỗi workflow kép `git zxczxc > `vrf <target> > `
+    const line3 = '`git zxczxc > `vrf <target> > ';
+    const res3 = calculateTabJumpTarget(line3, 13);
+    assert.ok(res3);
+    assert.equal(res3.targetColumn, 15);
+    assert.ok(res3.selection);
+    assert.equal(res3.selection.startColumn, 20);
+    assert.equal(res3.selection.endColumn, 28);
+    assert.equal(line3.slice(res3.selection.startColumn - 1, res3.selection.endColumn - 1), '<target>');
+
+    // Trường hợp 4: Không có dấu > hay placeholder nào
+    const line4 = 'hello world';
+    const res4 = calculateTabJumpTarget(line4, 5);
+    assert.equal(res4, null);
 });

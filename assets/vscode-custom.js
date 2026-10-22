@@ -9,15 +9,128 @@
         { label: '⚡ Tiếp tục', token: '`tt', desc: 'Tiếp tục thực thi implementation' },
         { label: '📋 Kế hoạch', token: '`fp', desc: 'Reindex & lập Task Plan 100% không điểm mù' },
         { label: '💡 Gợi ý', token: '`rcm', desc: 'Gợi ý 3 phương án thực thi/sửa lỗi' },
-        { label: '🚀 Commit', token: '`git', desc: 'Cập nhật changelog/readme và commit git' },
+        { label: '🚀 Commit', token: '`git', param: '<hash>', desc: 'Cập nhật changelog/readme và commit git' },
         { label: '🧪 Test DB', token: '`mtdb', param: '<target>', desc: 'Kiểm thử Oracle DB mes_test' },
         { label: '🧹 Clear', token: '/clear', desc: 'Xóa phiên trò chuyện hiện tại' }
     ];
 
+    function resolveChipParam(chip) {
+        if (!chip) return null;
+        if (typeof chip.param === 'string' && chip.param.trim().length > 0) {
+            return chip.param.trim();
+        }
+        if (window.__jarvisDynamicMacros && Array.isArray(window.__jarvisDynamicMacros)) {
+            const macro = window.__jarvisDynamicMacros.find(m => m && m.token === chip.token);
+            if (macro && typeof macro.param === 'string' && macro.param.trim().length > 0) {
+                return macro.param.trim();
+            }
+        }
+        return null;
+    }
+
+    function calculateTabJumpTarget(lineContent, cursorColumn) {
+        if (typeof lineContent !== 'string') return null;
+        const col = Math.max(1, Math.min(cursorColumn, lineContent.length + 1));
+        const textAfter = lineContent.slice(col - 1);
+
+        const match = /(?:^|\s*)>\s*/.exec(textAfter);
+        if (match) {
+            let targetCol = col + match.index + match[0].length;
+            let needsSpace = false;
+            if (!match[0].endsWith(' ') && (targetCol > lineContent.length || lineContent.charAt(targetCol - 1) !== ' ')) {
+                needsSpace = true;
+            }
+            const textAhead = lineContent.slice(targetCol - 1);
+            const placeholderMatch = /^(?:[^\s<]*\s+)?(<[a-zA-Z0-9_.:-]+>)/.exec(textAhead);
+            if (placeholderMatch) {
+                const pToken = placeholderMatch[1];
+                const pStart = targetCol + placeholderMatch[0].lastIndexOf(pToken);
+                const pEnd = pStart + pToken.length;
+                return { targetColumn: targetCol, selection: { startColumn: pStart, endColumn: pEnd }, needsSpace };
+            }
+            return { targetColumn: targetCol, selection: null, needsSpace };
+        }
+
+        const directPlaceholder = /<[a-zA-Z0-9_.:-]+>/.exec(textAfter);
+        if (directPlaceholder) {
+            const pStart = col + directPlaceholder.index;
+            const pEnd = pStart + directPlaceholder[0].length;
+            return { targetColumn: pEnd, selection: { startColumn: pStart, endColumn: pEnd }, needsSpace: false };
+        }
+
+        return null;
+    }
+
+    function tryHandleTabJump(editor) {
+        if (!editor || typeof editor.getModel !== 'function') return false;
+        const model = editor.getModel();
+        if (!model) return false;
+
+        const selection = typeof editor.getSelection === 'function' ? editor.getSelection() : null;
+        const pos = (selection && !selection.isEmpty && !selection.isEmpty())
+            ? selection.getEndPosition()
+            : (typeof editor.getPosition === 'function' ? editor.getPosition() : null);
+        if (!pos) return false;
+
+        let targetLine = pos.lineNumber;
+        let lineContent = model.getLineContent(targetLine);
+        let result = calculateTabJumpTarget(lineContent, pos.column);
+
+        if (!result && targetLine < model.getLineCount()) {
+            const totalLines = model.getLineCount();
+            for (let l = targetLine + 1; l <= totalLines; l++) {
+                const nextContent = model.getLineContent(l);
+                const nextRes = calculateTabJumpTarget(nextContent, 1);
+                if (nextRes) {
+                    targetLine = l;
+                    lineContent = nextContent;
+                    result = nextRes;
+                    break;
+                }
+            }
+        }
+
+        if (!result) return false;
+
+        let targetCol = result.targetColumn;
+        if (result.needsSpace) {
+            editor.executeEdits('jarvis-tab-jump', [{
+                range: { startLineNumber: targetLine, startColumn: targetCol, endLineNumber: targetLine, endColumn: targetCol },
+                text: ' '
+            }]);
+            targetCol += 1;
+        }
+
+        if (result.selection) {
+            const selOffset = result.needsSpace ? 1 : 0;
+            editor.setSelection({
+                startLineNumber: targetLine,
+                startColumn: result.selection.startColumn + selOffset,
+                endLineNumber: targetLine,
+                endColumn: result.selection.endColumn + selOffset
+            });
+        } else {
+            editor.setPosition({
+                lineNumber: targetLine,
+                column: targetCol
+            });
+        }
+        editor.focus();
+        return true;
+    }
+
     function getQuickChips() {
-        return (window.__jarvisQuickChips && Array.isArray(window.__jarvisQuickChips) && window.__jarvisQuickChips.length > 0)
+        const raw = (window.__jarvisQuickChips && Array.isArray(window.__jarvisQuickChips) && window.__jarvisQuickChips.length > 0)
             ? window.__jarvisQuickChips
             : JARVIS_DEFAULT_QUICK_CHIPS;
+        if (!window.__jarvisDynamicMacros || !Array.isArray(window.__jarvisDynamicMacros)) {
+            return raw;
+        }
+        return raw.map(chip => {
+            if (!chip || !chip.token) return chip;
+            const dynamicParam = resolveChipParam(chip);
+            return dynamicParam ? { ...chip, param: dynamicParam } : chip;
+        });
     }
 
     function handleQuickChipClick(chip) {
@@ -33,15 +146,31 @@
 
         const selection = ed.getSelection();
         if (!selection) return;
-        const range = {
+        let range = {
             startLineNumber: selection.startLineNumber,
             startColumn: selection.startColumn,
             endLineNumber: selection.endLineNumber,
             endColumn: selection.endColumn
         };
-        const hasParam = typeof chip.param === 'string' && chip.param.length > 0;
+        const model = ed.getModel();
+        if (model && range.startLineNumber === range.endLineNumber) {
+            const lineContent = model.getLineContent(range.endLineNumber);
+            const textAfter = lineContent.slice(range.endColumn - 1);
+            if (/^\s*>\s*$/.test(textAfter)) {
+                // Con trỏ đang đứng ngay trước dấu > cuối dòng; tự động chuyển vị trí chèn ra sau >
+                const endCol = lineContent.length + 1;
+                range = {
+                    startLineNumber: range.endLineNumber,
+                    startColumn: endCol,
+                    endLineNumber: range.endLineNumber,
+                    endColumn: endCol
+                };
+            }
+        }
+        const param = resolveChipParam(chip);
+        const hasParam = typeof param === 'string' && param.length > 0;
         const suffix = (chip.token === '/clear' || chip.token.trim().endsWith('>')) ? ' ' : ' > ';
-        const insertText = hasParam ? `${chip.token} ${chip.param}${suffix}` : `${chip.token}${suffix}`;
+        const insertText = hasParam ? `${chip.token} ${param}${suffix}` : `${chip.token}${suffix}`;
         ed.executeEdits('jarvis-quick-chip', [{ range, text: insertText }]);
 
         if (hasParam) {
@@ -50,7 +179,7 @@
                 startLineNumber: range.startLineNumber,
                 startColumn: paramStartColumn,
                 endLineNumber: range.startLineNumber,
-                endColumn: paramStartColumn + chip.param.length
+                endColumn: paramStartColumn + param.length
             });
         } else {
             ed.setPosition({
@@ -104,7 +233,7 @@
                 button.className = 'jarvis-quick-chip';
                 button.type = 'button';
                 button.textContent = chip.label;
-                button.title = chip.desc || chip.token;
+                button.title = (chip.desc || chip.token) + (chip.param ? ` ${chip.param}` : '');
                 button.addEventListener('mousedown', (event) => event.preventDefault());
                 button.addEventListener('click', () => handleQuickChipClick(chip));
                 button.addEventListener('contextmenu', (event) => {
@@ -574,44 +703,54 @@
         }
 
         domNode.addEventListener('keydown', (e) => {
-            if (!isMacroPopupActive() || _activeEditorForMacro !== editor) return;
-
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                if (_filteredMacros.length > 0) {
-                    _selectedMacroIndex = (_selectedMacroIndex + 1) % _filteredMacros.length;
-                    updateMacroSelectionHighlight();
+            if (isMacroPopupActive() && _activeEditorForMacro === editor) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    if (_filteredMacros.length > 0) {
+                        _selectedMacroIndex = (_selectedMacroIndex + 1) % _filteredMacros.length;
+                        updateMacroSelectionHighlight();
+                    }
+                    return;
                 }
-                return;
-            }
 
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                if (_filteredMacros.length > 0) {
-                    _selectedMacroIndex = (_selectedMacroIndex - 1 + _filteredMacros.length) % _filteredMacros.length;
-                    updateMacroSelectionHighlight();
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    if (_filteredMacros.length > 0) {
+                        _selectedMacroIndex = (_selectedMacroIndex - 1 + _filteredMacros.length) % _filteredMacros.length;
+                        updateMacroSelectionHighlight();
+                    }
+                    return;
                 }
-                return;
-            }
 
-            if (e.key === 'Enter' || e.key === 'Tab') {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                if (_filteredMacros.length > 0 && _filteredMacros[_selectedMacroIndex]) {
-                    applyMacroToEditor(_filteredMacros[_selectedMacroIndex]);
-                } else {
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    if (_filteredMacros.length > 0 && _filteredMacros[_selectedMacroIndex]) {
+                        applyMacroToEditor(_filteredMacros[_selectedMacroIndex]);
+                    } else {
+                        hideMacroPopup();
+                    }
+                    return;
+                }
+
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
                     hideMacroPopup();
+                    return;
                 }
                 return;
             }
 
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                hideMacroPopup();
-                return;
+            // Khi popup macro KHÔNG hiển thị: Tab-out nhảy qua dấu > hoặc placeholder tiếp theo
+            if (e.key === 'Tab' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                if (tryHandleTabJump(editor)) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return;
+                }
             }
         }, true);
     }
@@ -1564,4 +1703,11 @@
     }
 
     watchAllEditors();
+
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = {
+            calculateTabJumpTarget,
+            resolveChipParam
+        };
+    }
 })();

@@ -14,7 +14,7 @@ const DEFAULT_QUICK_CHIPS = [
     { label: '⚡ Tiếp tục', token: '`tt', desc: 'Tiếp tục thực thi implementation' },
     { label: '📋 Kế hoạch', token: '`fp', desc: 'Reindex & lập Task Plan 100% không điểm mù' },
     { label: '💡 Gợi ý', token: '`rcm', desc: 'Gợi ý 3 phương án thực thi/sửa lỗi' },
-    { label: '🚀 Commit', token: '`git', desc: 'Cập nhật changelog/readme và commit git' },
+    { label: '🚀 Commit', token: '`git', param: '<hash>', desc: 'Cập nhật changelog/readme và commit git' },
     { label: '🧪 Test DB', token: '`mtdb', param: '<target>', desc: 'Kiểm thử Oracle DB mes_test' },
     { label: '🧹 Clear', token: '/clear', desc: 'Xóa phiên trò chuyện hiện tại' }
 ];
@@ -160,7 +160,7 @@ function discoverMacrosFromRules(targetFile = null) {
         }
     }
 
-    const regex = /^\s*-\s*`([a-z0-9_-]+)`?(?:\s+(<[^>]+>))?:\s*([^\r\n]+)/gm;
+    const regex = /^\s*-\s*`([a-z0-9_-]+)`?(?:\s+(<[^>]+>))?`?:\s*([^\r\n]+)/gm;
 
     for (const filePath of candidateFiles) {
         try {
@@ -363,6 +363,21 @@ async function syncMacros(context, silent = false) {
         // Cập nhật vào setting Global để GitHub Settings Sync đồng bộ
         await config.update('jarvisEnhancer.customMacros', mergedMacros, vscode.ConfigurationTarget.Global);
 
+        // Tự động đồng bộ param vào quickChips đã cấu hình của user nếu phát hiện macro có param mới
+        let chipsChanged = false;
+        const enrichedQuickChips = quickChips.map(c => {
+            if (!c || !c.token) return c;
+            const m = macroMap.get(c.token);
+            if (m && m.param && c.param !== m.param) {
+                chipsChanged = true;
+                return { ...c, param: m.param };
+            }
+            return c;
+        });
+        if (chipsChanged) {
+            await config.update('jarvisEnhancer.quickChips', enrichedQuickChips, vscode.ConfigurationTarget.Global);
+        }
+
         // Ghi đè file ~/.jarvis/style/vscode-custom-macros.json
         const targetDir = path.join(os.homedir(), '.jarvis', 'style');
         if (!fs.existsSync(targetDir)) {
@@ -387,7 +402,7 @@ async function syncMacros(context, silent = false) {
         const discoveredSlash = discoverSlashCommands();
         const updatedJs = `window.__jarvisDynamicMacros = ${JSON.stringify(mergedMacros)};\n` +
             `window.__jarvisSlashCommands = ${JSON.stringify(discoveredSlash)};\n` +
-            `window.__jarvisQuickChips = ${JSON.stringify(quickChips)};\n` + currentJs;
+            `window.__jarvisQuickChips = ${JSON.stringify(enrichedQuickChips)};\n` + currentJs;
         fs.writeFileSync(destJs, updatedJs, 'utf8');
         if (logger) logger.info(`Đã cập nhật dynamic macros & slash commands header vào: ${destJs}`);
 
@@ -547,10 +562,18 @@ async function syncSetup(context, silent = false) {
         }
         const dynamicSlashCommands = discoverSlashCommands();
         const quickChips = getQuickChipsConfig();
+        const enrichedChips = quickChips.map(c => {
+            if (!c || !c.token) return c;
+            const macro = dynamicMacros.find(m => m && m.token === c.token);
+            if (macro && macro.param && c.param !== macro.param) {
+                return { ...c, param: macro.param };
+            }
+            return c;
+        });
 
         const macroHeader = `window.__jarvisDynamicMacros = ${JSON.stringify(dynamicMacros, null, 2)};\n` +
             `window.__jarvisSlashCommands = ${JSON.stringify(dynamicSlashCommands, null, 2)};\n` +
-            `window.__jarvisQuickChips = ${JSON.stringify(quickChips, null, 2)};\n\n`;
+            `window.__jarvisQuickChips = ${JSON.stringify(enrichedChips, null, 2)};\n\n`;
 
         const finalCss = baseCss + (userCss ? '\n\n/* === Custom User Overrides (Synced via Settings) === */\n' + userCss : '');
         const finalJs = macroHeader + baseJs + (userJs ? '\n\n/* === Custom User Overrides (Synced via Settings) === */\n' + userJs : '');

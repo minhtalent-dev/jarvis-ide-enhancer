@@ -57,7 +57,7 @@ function loadOrScanMacros() {
         findInstructionFiles(d);
     }
 
-    const regex = /^\s*-\s*`([a-z0-9_-]+)`?(?:\s+(<[^>]+>))?:\s*([^\r\n]+)/gm;
+    const regex = /^\s*-\s*`([a-z0-9_-]+)`?(?:\s+(<[^>]+>))?`?:\s*([^\r\n]+)/gm;
     for (const filePath of candidateFiles) {
         try {
             const content = fs.readFileSync(filePath, 'utf8');
@@ -245,13 +245,42 @@ const DEFAULT_QUICK_CHIPS = [
     { label: '⚡ Tiếp tục', token: '`tt', desc: 'Tiếp tục thực thi implementation' },
     { label: '📋 Kế hoạch', token: '`fp', desc: 'Reindex & lập Task Plan 100% không điểm mù' },
     { label: '💡 Gợi ý', token: '`rcm', desc: 'Gợi ý 3 phương án thực thi/sửa lỗi' },
-    { label: '🚀 Commit', token: '`git', desc: 'Cập nhật changelog/readme và commit git' },
+    { label: '🚀 Commit', token: '`git', param: '<hash>', desc: 'Cập nhật changelog/readme và commit git' },
     { label: '🧪 Test DB', token: '`mtdb', param: '<target>', desc: 'Kiểm thử Oracle DB mes_test' },
     { label: '🧹 Clear', token: '/clear', desc: 'Xóa phiên trò chuyện hiện tại' }
 ];
+
+function getEnrichedQuickChips(macroList) {
+    let chips = DEFAULT_QUICK_CHIPS;
+    const settingsPaths = [
+        path.join(os.homedir(), 'AppData', 'Roaming', 'Code', 'User', 'profiles', '-7cf60fbb', 'settings.json'),
+        path.join(os.homedir(), 'AppData', 'Roaming', 'Code', 'User', 'settings.json')
+    ];
+    for (const p of settingsPaths) {
+        if (fs.existsSync(p)) {
+            try {
+                const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
+                if (Array.isArray(parsed['jarvisEnhancer.quickChips']) && parsed['jarvisEnhancer.quickChips'].length > 0) {
+                    chips = parsed['jarvisEnhancer.quickChips'];
+                    break;
+                }
+            } catch (e) {}
+        }
+    }
+    return chips.map(c => {
+        if (!c || !c.token) return c;
+        const m = macroList.find(item => item && item.token === c.token);
+        if (m && m.param) {
+            return { ...c, param: m.param };
+        }
+        return c;
+    });
+}
+
+const enrichedChips = getEnrichedQuickChips(macros);
 const macroHeader = `window.__jarvisDynamicMacros = ${JSON.stringify(macros)};\n` +
     `window.__jarvisSlashCommands = ${JSON.stringify(slashCommands)};\n` +
-    `window.__jarvisQuickChips = ${JSON.stringify(DEFAULT_QUICK_CHIPS)};\n`;
+    `window.__jarvisQuickChips = ${JSON.stringify(enrichedChips)};\n`;
 
 if (fs.existsSync(srcJs)) {
     let baseJs = fs.readFileSync(srcJs, 'utf8');
