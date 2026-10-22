@@ -1180,10 +1180,21 @@
                 dot.className = 'hud-indicator-dot';
                 const turnsLabel = document.createElement('span');
                 turnsLabel.className = 'hud-turns';
-                badge.append(dot, turnsLabel);
 
-                badge.addEventListener('click', () => {
-                    if (Number.parseInt(badge.dataset.turns, 10) >= 20) handleNewLocalChatClick();
+                const sep = document.createElement('span');
+                sep.className = 'hud-separator';
+                sep.textContent = '|';
+
+                const localBtn = document.createElement('span');
+                localBtn.className = 'hud-local-chat-btn codicon codicon-device-desktop';
+                localBtn.title = 'New Local Chat (Allow All) [JARVIS]';
+
+                badge.append(dot, turnsLabel, sep, localBtn);
+
+                badge.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleNewLocalChatClick();
                 });
             }
 
@@ -1292,11 +1303,22 @@
     function injectNewLocalChatButton() {
         if (typeof document === 'undefined') return;
 
+        // Dọn sạch bất kỳ nút computer nào từng bị tiêm nhầm vào bên trong executeToolbar gây giật
+        const rogueActions = document.querySelectorAll(
+            '.interactive-input-part .jarvis-new-local-chat-action, .chat-input-toolbars .jarvis-new-local-chat-action, .chat-input-container .jarvis-new-local-chat-action'
+        );
+        rogueActions.forEach((el) => el.remove());
+
         const plusIcons = Array.from(document.querySelectorAll(
             '.monaco-toolbar .codicon-plus, .monaco-toolbar [aria-label*="New Chat"], .monaco-toolbar [title*="New Chat"]'
         ));
 
         plusIcons.forEach((plusEl) => {
+            // TUYỆT ĐỐI BỎ QUA các toolbar bên trong khu vực soạn thảo Chat Input (tránh bị ActionBar re-render xoá mất gây giật)
+            if (plusEl.closest('.interactive-input-part, .chat-input-container, .chat-input-toolbars, .chat-editor-container')) {
+                return;
+            }
+
             if (plusEl.closest('.hidden, [style*="display: none"], [style*="visibility: hidden"], .pane-header.hidden')) {
                 return;
             }

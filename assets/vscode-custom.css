@@ -643,6 +643,26 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     font-variant-numeric: tabular-nums !important;
 }
 
+.jarvis-chat-hud-badge .hud-separator {
+    color: rgba(255, 255, 255, 0.25) !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    user-select: none !important;
+}
+
+.jarvis-chat-hud-badge .hud-local-chat-btn {
+    font-size: 11px !important;
+    line-height: 1 !important;
+    color: #cdd6f4 !important;
+    transition: color 0.15s ease, transform 0.15s ease !important;
+    cursor: pointer !important;
+}
+
+.jarvis-chat-hud-badge:hover .hud-local-chat-btn {
+    color: #89b4fa !important;
+    transform: scale(1.15) !important;
+}
+
 /* Triệt tiêu hoàn toàn hiệu ứng giật/co giãn chiều cao khi focus vào chat input */
 .monaco-workbench .interactive-session .interactive-input-part,
 .monaco-workbench .interactive-session .chat-input-container,
