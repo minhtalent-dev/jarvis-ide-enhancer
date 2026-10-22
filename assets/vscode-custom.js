@@ -40,7 +40,8 @@
             endColumn: selection.endColumn
         };
         const hasParam = typeof chip.param === 'string' && chip.param.length > 0;
-        const insertText = hasParam ? `${chip.token} ${chip.param} ` : `${chip.token} `;
+        const suffix = (chip.token === '/clear' || chip.token.trim().endsWith('>')) ? ' ' : ' > ';
+        const insertText = hasParam ? `${chip.token} ${chip.param}${suffix}` : `${chip.token}${suffix}`;
         ed.executeEdits('jarvis-quick-chip', [{ range, text: insertText }]);
 
         if (hasParam) {

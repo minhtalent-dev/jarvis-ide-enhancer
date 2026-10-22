@@ -95,6 +95,22 @@ test('Tính toán tọa độ selection khi bôi đen tham số', () => {
     assert.equal(insertText.substring(paramStartCol - range.startColumn, paramEndCol - range.startColumn), '<name>');
 });
 
+test('Quick Action Chip tự động thêm hậu tố > để add nhanh workflow', () => {
+    function formatChipInsertText(chip) {
+        const hasParam = typeof chip.param === 'string' && chip.param.length > 0;
+        const suffix = (chip.token === '/clear' || chip.token.trim().endsWith('>')) ? ' ' : ' > ';
+        return hasParam ? `${chip.token} ${chip.param}${suffix}` : `${chip.token}${suffix}`;
+    }
+
+    assert.equal(formatChipInsertText({ token: '`tt' }), '`tt > ');
+    assert.equal(formatChipInsertText({ token: '`fp' }), '`fp > ');
+    assert.equal(formatChipInsertText({ token: '`rcm' }), '`rcm > ');
+    assert.equal(formatChipInsertText({ token: '`git' }), '`git > ');
+    assert.equal(formatChipInsertText({ token: '`mtdb', param: '<target>' }), '`mtdb <target> > ');
+    assert.equal(formatChipInsertText({ token: '/clear' }), '/clear ');
+    assert.equal(formatChipInsertText({ token: '`custom >' }), '`custom > ');
+});
+
 test('Session turn counter cô lập theo sessionKey và trả về 0 cho phiên mới', () => {
     const turnMap = new Map();
 
