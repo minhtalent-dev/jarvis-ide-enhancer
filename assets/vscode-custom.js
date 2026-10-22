@@ -1139,11 +1139,11 @@
         if (!sessionEl || typeof sessionEl.querySelectorAll !== 'function') return 0;
 
         // 1. Quét các phần tử request của User trong DOM hiện tại (loại bỏ hoàn toàn phản hồi của Agent/Assistant)
-        const allUserNodes = Array.from(sessionEl.querySelectorAll(
-            '.monaco-list-row.interactive-request, .chat-item.request, .interactive-request, [class*="chat-request"]'
-        )).filter((node) => !node.closest('.interactive-response, .chat-response, .chat-item.response, [class~="response"]'));
+        const userItems = Array.from(sessionEl.querySelectorAll(
+            '.interactive-item-container.interactive-request, .interactive-request:not(.interactive-response), .chat-item.request'
+        )).filter((node) => !node.closest('.interactive-response, .chat-response, .chat-item.response'));
 
-        const topLevelRequests = allUserNodes.filter((node) => !allUserNodes.some((other) => other !== node && other.contains(node)));
+        const topLevelRequests = userItems.filter((node) => !userItems.some((other) => other !== node && other.contains(node)));
 
         // 2. Kiểm tra số lượng prompt từ Microsoft Native Prompt Timeline (chỉ đếm .prompt-timeline-gutter-row, không đếm ruler-mark để tránh nhân đôi)
         const timelineGutterRows = sessionEl.querySelectorAll('.prompt-timeline-gutter-row');
@@ -1166,7 +1166,7 @@
         }
 
         for (const req of topLevelRequests) {
-            const dataIndex = req.getAttribute('data-index');
+            const dataIndex = req.getAttribute('data-index') || req.closest('.monaco-list-row')?.getAttribute('data-index');
             const key = dataIndex != null ? `idx:${dataIndex}` : `txt:${req.textContent?.slice(0, 40)}`;
             if (key) state.seenIndices.add(key);
         }
@@ -1192,8 +1192,16 @@
 
             const inputPart = inputParts.find((part) => part.closest('.interactive-session')) || inputParts[inputParts.length - 1];
             const sessionEl = inputPart.closest('.interactive-session') || sessions[sessions.length - 1];
+
+            // Neo trực tiếp vào thanh công cụ bên phải (ngay cạnh nút Mic và Gửi) để đảm bảo luôn hiển thị 100%, không bị che khuất bởi model picker
+            const toolbars = inputPart.querySelector('.chat-input-toolbars .monaco-toolbar .actions-container')
+                || inputPart.querySelector('.chat-input-toolbars .monaco-toolbar')
+                || inputPart.querySelector('.chat-input-toolbars');
+
             const footerAnchor = inputPart.querySelector('.chat-input-picker-item, .chat-session-target-picker-item');
-            const footer = (footerAnchor && footerAnchor.parentElement) || inputPart;
+            const fallbackFooter = (footerAnchor && footerAnchor.parentElement) || inputPart.querySelector('.chat-secondary-toolbar') || inputPart;
+
+            const footer = toolbars || fallbackFooter;
             if (!footer) return;
 
             const turns = countSessionTurns(sessionEl);
@@ -1238,7 +1246,11 @@
             }
 
             if (badge.parentElement !== footer) {
-                footer.appendChild(badge);
+                if (toolbars && toolbars.firstChild) {
+                    toolbars.insertBefore(badge, toolbars.firstChild);
+                } else {
+                    footer.appendChild(badge);
+                }
             }
 
             if (badge.dataset.turns === turnsStr && badge.parentElement === footer) return;
