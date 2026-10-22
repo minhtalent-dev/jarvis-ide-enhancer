@@ -145,7 +145,7 @@
 
     window.addEventListener('jarvis-chips-updated', () => scheduleInjectQuickActionChips());
 
-    window.__jarvisSessionTurnMap = new WeakMap();
+    window.__jarvisSessionTurnMap = new Map();
 
     /**
      * Quét và trích xuất danh sách token backtick macro, loại trừ các khối inline code Markdown
@@ -1157,7 +1157,7 @@
 
         // 4. Lấy sessionKey độc lập cho phiên chat hiện tại (chống dính số lượt của phiên chat cũ)
         const sessionKey = getActiveSessionKey(sessionEl);
-        if (!window.__jarvisSessionTurnMap) {
+        if (!window.__jarvisSessionTurnMap || !(window.__jarvisSessionTurnMap instanceof Map)) {
             window.__jarvisSessionTurnMap = new Map();
         }
         let state = window.__jarvisSessionTurnMap.get(sessionKey);
@@ -1194,15 +1194,9 @@
             const inputPart = inputParts.find((part) => part.closest('.interactive-session')) || inputParts[inputParts.length - 1];
             const sessionEl = inputPart.closest('.interactive-session') || sessions[sessions.length - 1];
 
-            // Neo trực tiếp vào thanh công cụ bên phải (ngay cạnh nút Mic và Gửi) để đảm bảo luôn hiển thị 100%, không bị che khuất bởi model picker
-            const toolbars = inputPart.querySelector('.chat-input-toolbars .monaco-toolbar .actions-container')
-                || inputPart.querySelector('.chat-input-toolbars .monaco-toolbar')
-                || inputPart.querySelector('.chat-input-toolbars');
-
+            // Vị trí y cũ nguyên bản: Bên phải các picker (sau [sliders], trước [mic])
             const footerAnchor = inputPart.querySelector('.chat-input-picker-item, .chat-session-target-picker-item');
-            const fallbackFooter = (footerAnchor && footerAnchor.parentElement) || inputPart.querySelector('.chat-secondary-toolbar') || inputPart;
-
-            const footer = toolbars || fallbackFooter;
+            const footer = (footerAnchor && footerAnchor.parentElement) || inputPart.querySelector('.chat-secondary-toolbar') || inputPart;
             if (!footer) return;
 
             const turns = countSessionTurns(sessionEl);
@@ -1247,11 +1241,7 @@
             }
 
             if (badge.parentElement !== footer) {
-                if (toolbars && toolbars.firstChild) {
-                    toolbars.insertBefore(badge, toolbars.firstChild);
-                } else {
-                    footer.appendChild(badge);
-                }
+                footer.appendChild(badge);
             }
 
             if (badge.dataset.turns === turnsStr && badge.parentElement === footer) return;

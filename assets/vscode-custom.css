@@ -624,8 +624,8 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     display: inline-flex !important;
     align-items: center !important;
     gap: 5px !important;
-    margin-right: 6px !important;
-    margin-left: 4px !important;
+    margin-left: 6px !important;
+    margin-right: 0 !important;
     padding: 2px 7px !important;
     border: 1px solid rgba(137, 180, 250, 0.28) !important;
     border-radius: 12px !important;
@@ -644,6 +644,11 @@ nav.prompt-timeline-rail.prompt-timeline-rail-gutter,
     visibility: visible !important;
     opacity: 1 !important;
     transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease !important;
+}
+
+/* Đảm bảo toolbar phụ chứa pickers không che khuất badge ở vị trí nguyên bản */
+.interactive-session .chat-secondary-toolbar .chat-responsive-picker-container {
+    overflow: visible !important;
 }
 
 .jarvis-chat-hud-badge:hover,
